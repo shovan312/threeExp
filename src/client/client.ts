@@ -9,7 +9,7 @@ const scene = new THREE.Scene()
 // scene.add(new THREE.AxesHelper(5))
 
 const camera = new THREE.PerspectiveCamera(
-    50,
+    250,
     window.innerWidth / window.innerHeight,
     0.1,
     1000
@@ -97,6 +97,10 @@ spherePropertiesFolder
 spherePropertiesFolder.add(sphereData, 'thetaStart', 0, Math.PI).onChange(regenerateSphereGeometry)
 spherePropertiesFolder.add(sphereData, 'thetaLength', 0, Math.PI).onChange(regenerateSphereGeometry)
 
+const camFolder = gui.addFolder('Camera')
+const camPropertiesFolder = camFolder.addFolder('Properties')
+camPropertiesFolder.add(camera, 'fov', 0, 360)
+
 function regenerateSphereGeometry() {
     const newGeometry = new THREE.SphereGeometry(
         sphereData.radius,
@@ -117,8 +121,8 @@ function animate() {
     requestAnimationFrame(animate)
 
 
-    scene.rotateY(0.0001)
-    scene.rotateX(0.001)
+    // scene.rotateY(0.0001)
+    // scene.rotateX(0.001)
     
     // let newPosition:THREE.Vector= path.getPoint((time % 2000)/2000)
     // let pos:THREE.Vector3 = new THREE.Vector3(
@@ -132,9 +136,12 @@ function animate() {
     // sphereData.heightSegments = Math.floor(3 + Math.abs(30*Math.sin(time/3000)))
     // sphereData.widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
     sphereData.thetaLength = time/2000
-    // sphereData.widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
     regenerateSphereGeometry()
     render()
+
+    camera.fov = 60 + 50*Math.sin(time/10000);
+
+    camera.updateProjectionMatrix()
 
     //debug.innerText = 'Matrix\n' + cube.matrix.elements.toString().replace(/,/g, '\n')
 
