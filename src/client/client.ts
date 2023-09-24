@@ -13,6 +13,11 @@ type sphereData = {
     thetaLength: number,
 }
 
+type cubePipeObj = {
+    cube: THREE.Mesh,
+    velocity: THREE.Vector3
+}
+
 let n = 40
 
 let pallette = [
@@ -36,6 +41,24 @@ const camera = new THREE.PerspectiveCamera(
     1000
 )
 
+const pointLight = new THREE.PointLight(0xffffff, 10, 0, 2)
+const pointLight2 = new THREE.PointLight(0xffffff, 10, 0, 2)
+const pointLight3 = new THREE.PointLight(0xffffff, 10, 0, 1)
+const pointLight4 = new THREE.PointLight(0xffffff, 10, 0, 1)
+const pointLight5 = new THREE.PointLight(0xffffff, 10, 0, 1)
+const pointLight6 = new THREE.PointLight(0xffffff, 10, 0, 1)
+pointLight.position.x = 5
+pointLight2.position.x = -5
+pointLight3.position.x = -20
+pointLight4.position.x = 20
+pointLight5.position.y = -20
+pointLight6.position.y = 20
+scene.add(pointLight)
+scene.add(pointLight2)
+scene.add(pointLight3)
+scene.add(pointLight4)
+scene.add(pointLight5)
+scene.add(pointLight6)
 // const camera = new THREE.OrthographicCamera(
 //     -10,10,10,-10,0.001,100
 // )
@@ -48,7 +71,9 @@ document.body.appendChild(renderer.domElement)
 new OrbitControls(camera, renderer.domElement)
 
 /////////////
-makeLattice()
+const lattices:Array<THREE.Points> = [];
+makeLattice(n, 0.005)
+makeLattice(2*n/3, 0.1)
 ////////////
 const spheres:Array<THREE.Mesh> = []
 const spheresData:Array<sphereData> = []
@@ -77,6 +102,17 @@ makeRing(15,1, 0x00ff00)
 makeRing(25,1, 0x0000ff)
 rings[0].add(rings[1])
 rings[1].add(rings[2])
+
+/////////////////
+
+const cubePipes:Array<cubePipeObj> = []
+makeCubePipe(lattices[0])
+makeCubePipe(lattices[0])
+makeCubePipe(lattices[0])
+makeCubePipe(lattices[0])
+makeCubePipe(lattices[0])
+makeCubePipe(lattices[0])
+makeCubePipe(lattices[0])
 
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
@@ -113,9 +149,19 @@ function animate() {
     const time = clock.getElapsedTime()*1000
     requestAnimationFrame(animate)
 
+    if (time < 9000) {
+        spheres.forEach(sphere =>sphere.visible = false)
+        boxes.forEach(box => box.visible = false)
+        rings.forEach(ring => ring.visible = false)
+    }
+    if (time > 9000) {
+        spheres.forEach(sphere =>sphere.visible = true)
+        boxes.forEach(box => box.visible = true)
+        rings.forEach(ring => ring.visible = true)
+    }
 
-    scene.rotateY(0.001)
-    // scene.rotateX(0.001)
+    // scene.rotateY(0.001)
+    scene.rotateX(0.001)
     
     // let newPosition:THREE.Vector= path.getPoint((time % 2000)/2000)
     // let pos:THREE.Vector3 = new THREE.Vector3(
@@ -134,9 +180,6 @@ function animate() {
     regenerateSphereGeometry(1)
     regenerateSphereGeometry(2)
     render()
-
-    camera.fov = 50 + 50*Math.sin(time/5000);
-    camera.updateProjectionMatrix()
 
     for(let i=0; i<boxes.length; i++) {
         boxes[i].position.set(
@@ -158,8 +201,40 @@ function animate() {
             Math.PI/2*Math.cos(time/1000),
             Math.PI/6*Math.sin(time/1000))
     }
-    //debug.innerText = 'Matrix\n' + cube.matrix.elements.toString().replace(/,/g, '\n')
 
+    if(time > 3000 && lattices[1].rotation.y < Math.PI) {
+        // lattices[1].geometry.rotateY(0.001)
+        lattices[1].geometry.rotateX(0.001)
+    }
+
+    // const latticeArr = lattices[0].geometry.getAttribute('position').array
+    // for(let i=0; i<latticeArr.length; i+=3) {
+        // transformPoint(latticeArr, i, 2, 4, time)
+    // }
+    // lattices[0].geometry.setAttribute('position', new THREE.BufferAttribute(latticeArr, 3))
+
+    moveCubePipe(lattices[0])
+    if(time > 3000 && time < 3010) {
+        changeVelocities()
+    }
+    if(time > 6000 && time < 6010) {
+        changeVelocities()
+    }if(time > 9000 && time < 9010) {
+        changeVelocities()
+    }
+    for(let i=0; i<cubePipes.length; i++) {
+        cubePipes[i].cube.rotateX(0.01)
+        cubePipes[i].cube.rotateY(0.03  )
+    }
+
+    //debug.innerText = 'Matrix\n' + cube.matrix.elements.toString().replace(/,/g, '\n')
+    if (time < 9000) {
+        camera.fov = 50 + 50*Math.sin(time/2000);
+    }
+    else {
+        camera.fov = 50 + 50*Math.sin(9/2 + (time-9000)/8000);
+    }
+    camera.updateProjectionMatrix()
     stats.update()
 }
 
@@ -189,7 +264,7 @@ function makePath() {
       return pointsPath;
 }
 
-function makeLattice() {
+function makeLattice(n:number, size:number) {
     const latticeGeo = new THREE.BufferGeometry;
     const posArray:Float32Array = new Float32Array(3*n*n*n);
     for(let i=0; i < n; i++) {
@@ -203,16 +278,18 @@ function makeLattice() {
     }
     latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
     const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
-        size:0.005,
+        size:size,
         color: 0xffffff
     
     }))
     scene.add(latticeMesh)
+    lattices.push(latticeMesh)
+
 }
 
 function makeSphere(r:number, col: THREE.ColorRepresentation) {
     const geo = new THREE.SphereGeometry(r,20,20);
-    const mat = new THREE.MeshBasicMaterial(
+    const mat = new THREE.MeshLambertMaterial(
         {
             color: col,
             wireframe: true,
@@ -234,11 +311,11 @@ function makeSphere(r:number, col: THREE.ColorRepresentation) {
 }
 
 function makeBox(w:number,h:number,d:number, col: THREE.ColorRepresentation) {
-    const geo = new THREE.BoxGeometry(w,h,d,20,20,20);
-    const mat = new THREE.MeshBasicMaterial(
+    const geo = new THREE.BoxGeometry(w,h,d,5,5,5);
+    const mat = new THREE.MeshLambertMaterial(
         {
             color: col,
-            wireframe: true,
+            wireframe: false,
         }
     )
     
@@ -250,10 +327,10 @@ function makeBox(w:number,h:number,d:number, col: THREE.ColorRepresentation) {
 
 function makeRing(r1:number, r2:number, col: THREE.ColorRepresentation) {
     const geo = new THREE.TorusGeometry(r1, r2, 90, 9);
-    const mat = new THREE.MeshBasicMaterial(
+    const mat = new THREE.MeshLambertMaterial(
         {
             color: col,
-            wireframe: true
+            wireframe: false
         }
     )
 
@@ -261,3 +338,86 @@ function makeRing(r1:number, r2:number, col: THREE.ColorRepresentation) {
     rings.push(ring)
     scene.add(ring)
 }
+
+function makeCubePipe(lattice:THREE.Points) {
+    const n = Math.floor(Math.cbrt(
+        lattice.geometry.getAttribute('position').array.length/3));
+
+    const pipeGeo = new THREE.BoxGeometry(3,3,3,5,5,5);
+    const pipeMat = new THREE.MeshLambertMaterial({
+        color: pallette[Math.floor(1 + Math.random()*6)],
+        wireframe: false
+    })
+    const cubePipe = new THREE.Mesh(pipeGeo, pipeMat)
+    const dir = Math.floor(8*Math.random())
+    cubePipes.push({
+        cube: cubePipe,
+        velocity: new THREE.Vector3(
+            0.08*Math.floor(Math.random() * 2),
+            0.08*Math.floor(Math.random() * 2),
+            0.08*Math.floor(Math.random() * 2)
+            )
+    })
+    scene.add(cubePipe)
+
+    cubePipe.position.set(
+        Math.ceil(n*Math.random()) - n/2,
+        Math.ceil(n*Math.random()) - n/2,
+        Math.ceil(n*Math.random()) - n/2
+    )
+}
+
+function moveCubePipe(lattice:THREE.Points) {
+    const n = Math.floor(Math.cbrt(
+        lattice.geometry.getAttribute('position').array.length/3));
+    for(let i=0; i<cubePipes.length; i++) {
+        cubePipes[i].cube.position.add(
+            cubePipes[i].velocity
+        )
+        if(isOutside(cubePipes[i].cube.position, n)) {
+            cubePipes[i].velocity.multiplyScalar(-1);
+        }
+    }
+}
+
+function changeVelocities() {
+    for(let i=0; i<cubePipes.length; i++) {
+        const dir = Math.floor(8*Math.random())
+        cubePipes[i].velocity = new THREE.Vector3(
+            0.08*Math.floor(Math.random() * 2),
+            0.08*Math.floor(Math.random() * 2),
+            0.08*Math.floor(Math.random() * 2)
+            )
+    }
+}
+
+function isOutside(pos: THREE.Vector3, n:number):boolean {
+    return pos.x > n/2 || 
+        pos.x < -n/2 || 
+        pos.y > n/2 || 
+        pos.y < -n/2 || 
+        pos.z > n/2 || 
+        pos.z < -n/2 
+}
+
+// function transformPoint(latticeArr:THREE.TypedArray, 
+//     i:number, 
+//     t1:number, 
+//     t2:number,
+//     time:number) {
+//         const curr = new THREE.Vector3(
+//             latticeArr[i],
+//             latticeArr[i+1],
+//             latticeArr[i+2]
+//         )
+//         const target = new THREE.Vector3(
+//             0,0,0
+//         )
+//         if (time > t1 && time < t2) {
+//             const t = (time-t1)/(t2-t1);
+            
+//             latticeArr[i] = latticeArr[i];
+//             latticeArr[i+1] = latticeArr[i+1];
+//             latticeArr[i+2] = latticeArr[i+2];
+//         }
+//     }
