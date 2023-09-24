@@ -24,17 +24,16 @@ camera.position.z = 5
 
 const renderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.setClearColor(0x000000, 0.0);
 document.body.appendChild(renderer.domElement)
 
 new OrbitControls(camera, renderer.domElement)
 
 const sphereGeometry = new THREE.SphereGeometry(4,20,20)
-
 const material = new THREE.MeshBasicMaterial({
     color: 0x0000ff,
     wireframe: true,
 })
-
 const sphere = new THREE.Mesh(sphereGeometry, material)
 scene.add(sphere)
 
@@ -49,6 +48,13 @@ for(let i=0; i < n; i++) {
         }
     }
 }
+
+const posArray2:Float32Array = new Float32Array(3*n*n*n);
+for(let i=0; i<n*n*n; i+=3) {
+    posArray2[i] = 25*Math.sin(Math.PI*2*i/(n*n*n));
+    posArray2[i+1] = 25*Math.cos(Math.PI*2*i/(n*n*n));
+    posArray2[i+2] = 0;
+}
 latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
 const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
     size:0.005,
@@ -58,12 +64,10 @@ const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
 scene.add(latticeMesh)
 
 
-const path = makePath();
-
 
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
-    // camera.aspect = window.innerWidth / window.innerHeight
+    camera.aspect = window.innerWidth / window.innerHeight
     camera.updateProjectionMatrix()
     renderer.setSize(window.innerWidth, window.innerHeight)
     render()
@@ -83,19 +87,6 @@ const sphereData = {
     thetaStart: 0,
     thetaLength: Math.PI,
 }
-const sphereFolder = gui.addFolder('Sphere')
-const spherePropertiesFolder = sphereFolder.addFolder('Properties')
-spherePropertiesFolder.add(sphereData, 'radius', 0.1, 30).onChange(regenerateSphereGeometry)
-spherePropertiesFolder.add(sphereData, 'widthSegments', 1, 32).onChange(regenerateSphereGeometry)
-spherePropertiesFolder.add(sphereData, 'heightSegments', 1, 16).onChange(regenerateSphereGeometry)
-spherePropertiesFolder
-    .add(sphereData, 'phiStart', 0, Math.PI * 2)
-    .onChange(regenerateSphereGeometry)
-spherePropertiesFolder
-    .add(sphereData, 'phiLength', 0, Math.PI * 2)
-    .onChange(regenerateSphereGeometry)
-spherePropertiesFolder.add(sphereData, 'thetaStart', 0, Math.PI).onChange(regenerateSphereGeometry)
-spherePropertiesFolder.add(sphereData, 'thetaLength', 0, Math.PI).onChange(regenerateSphereGeometry)
 
 function regenerateSphereGeometry() {
     const newGeometry = new THREE.SphereGeometry(
@@ -110,34 +101,30 @@ function regenerateSphereGeometry() {
     sphere.geometry.dispose()
     sphere.geometry = newGeometry
 }
-const debug = document.getElementById('debug1') as HTMLDivElement
+
+
 const clock = new THREE.Clock()
 function animate() {
-    const time = clock.getElapsedTime()*1000
+    const time = clock.getElapsedTime()
     requestAnimationFrame(animate)
 
 
-    scene.rotateY(0.0001)
-    scene.rotateX(0.001)
+    // scene.rotateY(0.0001)
+    // scene.rotateX(0.001)
     
-    // let newPosition:THREE.Vector= path.getPoint((time % 2000)/2000)
-    // let pos:THREE.Vector3 = new THREE.Vector3(
-    //     newPosition.getComponent(0),
-    //     newPosition.getComponent(1),
-    //     newPosition.getComponent(2)
-    // );
-    // sphere.position.copy(pos)
     sphere.position.x = 4+Math.sin(time/1000);
     sphere.position.z = 4+Math.sin(time/1000);
-    // sphereData.heightSegments = Math.floor(3 + Math.abs(30*Math.sin(time/3000)))
-    // sphereData.widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
     sphereData.thetaLength = time/2000
     // sphereData.widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
+    
+    const currArray = new Float32Array(latticeGeo.getAttribute('position').array)
+    morph(currArray, posArray2, time/10000)
+    latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(currArray, 3))
+
+    
+    
     regenerateSphereGeometry()
     render()
-
-    //debug.innerText = 'Matrix\n' + cube.matrix.elements.toString().replace(/,/g, '\n')
-
     stats.update()
 }
 
@@ -149,20 +136,10 @@ animate()
 
 ///////////
 
-function makePath() {
-    const pointsPath = new THREE.CurvePath()
-    const firstLine = new THREE.CubicBezierCurve3(
-        new THREE.Vector3( -1, 1, 1 ),
-        new THREE.Vector3( -0.5, 1.5, 0 ),
-        new THREE.Vector3( 2.0, 1.5, 0 ),
-        new THREE.Vector3( -1, 0, 1 )
-    );
-    const secondLine = new THREE.LineCurve3(
-        new THREE.Vector3(-1, 0, 0 ),
-        new THREE.Vector3( -1, 1, 0 )
-      );
-      pointsPath.add(firstLine);
-      pointsPath.add(secondLine);
-
-      return pointsPath;
+function morph(from:Float32Array, to:Float32Array, t:number) {
+    for(let i = 0; i < from.length; i++) {
+        from[i] = from[i] + t*(to[i] - from[i])
+    }
 }
+
+
