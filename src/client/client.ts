@@ -29,13 +29,21 @@ document.body.appendChild(renderer.domElement)
 
 new OrbitControls(camera, renderer.domElement)
 
-const sphereGeometry = new THREE.SphereGeometry(4,20,20)
+// const sphereGeometry = new THREE.BoxGeometry(10,10,10,10,10,10)
+const posArray2 = new Float32Array(3*10*10*(1+2+3+4+5+6+7+8+9));
+for(let i=0; i<10; i++) {
+    const sphereGeometry = new THREE.SphereGeometry(2*i,10*i,10*i)
+    const geoArr = sphereGeometry.getAttribute('position').array;
+    for(let j=0; j<geoArr.length; j++)
+    posArray2[20*20*3*i + j] = geoArr[j]
+}
+// console.log(posArray2)
 const material = new THREE.MeshBasicMaterial({
     color: 0x0000ff,
     wireframe: true,
 })
-const sphere = new THREE.Mesh(sphereGeometry, material)
-scene.add(sphere)
+// const sphere = new THREE.Mesh(sphereGeometry, material)
+// scene.add(sphere)
 
 const latticeGeo = new THREE.BufferGeometry;
 const posArray:Float32Array = new Float32Array(3*n*n*n);
@@ -49,12 +57,29 @@ for(let i=0; i < n; i++) {
     }
 }
 
-const posArray2:Float32Array = new Float32Array(3*n*n*n);
-for(let i=0; i<n*n*n; i+=3) {
-    posArray2[i] = 25*Math.sin(Math.PI*2*i/(n*n*n));
-    posArray2[i+1] = 25*Math.cos(Math.PI*2*i/(n*n*n));
-    posArray2[i+2] = 0;
-}
+// const posArray2 = sphereGeometry.getAttribute('position').array
+// const sArr = sphereGeometry.getAttribute('position').array;
+// const posArray2:Float32Array = new Float32Array(sArr.length);
+// for(let i=0; i<sArr.length; i++) {
+    // posArray2[i] = sArr[i]
+// }
+
+// const posArray2:Float32Array = new Float32Array(3*n*n*n);
+// for(let i=0; i < n; i++) {
+//     for(let j=0; j<n; j++) {
+//         for(let k=0; k<n; k++) {
+//             posArray2[3*(n*n*i + n*j + k) + 0] = i - (n-1)/2;
+//             posArray2[3*(n*n*i + n*j + k) + 1] = j - (n-1)/2;
+//             posArray2[3*(n*n*i + n*j + k) + 2] = 0;
+//         }
+//     }
+// }
+// for(let i=0; i<n*n*n; i+=3) {
+//     posArray2[i] = 25*Math.sin(Math.PI*2*i/(n*n*n));
+//     posArray2[i+1] = 25*Math.cos(Math.PI*2*i/(n*n*n));
+//     posArray2[i+2] = 0;
+// }
+
 latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
 const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
     size:0.005,
@@ -78,30 +103,6 @@ document.body.appendChild(stats.dom)
 
 const gui = new GUI()
 
-const sphereData = {
-    radius: 1,
-    widthSegments: 8,
-    heightSegments: 6,
-    phiStart: 0,
-    phiLength: Math.PI * 2,
-    thetaStart: 0,
-    thetaLength: Math.PI,
-}
-
-function regenerateSphereGeometry() {
-    const newGeometry = new THREE.SphereGeometry(
-        sphereData.radius,
-        sphereData.widthSegments,
-        sphereData.heightSegments,
-        sphereData.phiStart,
-        sphereData.phiLength,
-        sphereData.thetaStart,
-        sphereData.thetaLength
-    )
-    sphere.geometry.dispose()
-    sphere.geometry = newGeometry
-}
-
 
 const clock = new THREE.Clock()
 function animate() {
@@ -112,18 +113,17 @@ function animate() {
     // scene.rotateY(0.0001)
     // scene.rotateX(0.001)
     
-    sphere.position.x = 4+Math.sin(time/1000);
-    sphere.position.z = 4+Math.sin(time/1000);
-    sphereData.thetaLength = time/2000
+    // sphereData.thetaLength = time/2000
     // sphereData.widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
     
-    const currArray = new Float32Array(latticeGeo.getAttribute('position').array)
-    morph(currArray, posArray2, time/10000)
-    latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(currArray, 3))
-
+    // const currArray = new Float32Array(latticeGeo.getAttribute('position').array)
+    const newArray:Float32Array = morph(posArray, posArray2, Math.abs(Math.sin(time/10)))
+    // const newArray:Float32Array = morph(posArray, posArray2, 1)
+    // console.log(newArray.length)
+    latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(newArray, 3))
+    // latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
     
     
-    regenerateSphereGeometry()
     render()
     stats.update()
 }
@@ -136,10 +136,37 @@ animate()
 
 ///////////
 
-function morph(from:Float32Array, to:Float32Array, t:number) {
-    for(let i = 0; i < from.length; i++) {
-        from[i] = from[i] + t*(to[i] - from[i])
+function morph(from:Float32Array, to:Float32Array, t:number): Float32Array {
+    if(from.length == to.length) {
+        const ret = new Float32Array(from.length);
+        for(let i = 0; i < from.length; i++) {
+            ret[i] = from[i] + t*(to[i] - from[i])
+        }
+        return ret
     }
+    else if(from.length > to.length) {
+        const ret = new Float32Array(from.length);
+        for(let i = 0; i < from.length; i+=3) {
+            const ind = Math.floor(i/3)
+            const newInd = ind*100003%(to.length/3)
+            ret[3*ind + 0] = from[3*ind + 0] + t*(to[3*newInd + 0] - from[3*ind + 0])
+            ret[3*ind + 1] = from[3*ind + 1] + t*(to[3*newInd + 1] - from[3*ind + 1])
+            ret[3*ind + 2] = from[3*ind + 2] + t*(to[3*newInd + 2] - from[3*ind + 2])
+        }
+        return ret
+    }
+    else {
+        const ret = new Float32Array(to.length);
+        for(let i = 0; i < to.length; i+=3) {
+            const ind = Math.floor(i/3)
+            const newInd = ind*100003%(to.length/3)
+            ret[3*i + 0] = from[3*newInd + 0] + t*(to[3*ind + 0] - from[3*newInd + 0])
+            ret[3*i + 1] = from[3*newInd + 1] + t*(to[3*ind + 1] - from[3*newInd + 1])
+            ret[3*i + 2] = from[3*newInd + 2] + t*(to[3*ind + 2] - from[3*newInd + 2])
+        }
+        return ret
+    }
+
 }
 
 
