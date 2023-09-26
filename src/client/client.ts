@@ -2,11 +2,47 @@ import * as THREE from 'three'
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { GUI } from 'dat.gui'
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+
+const loader:OBJLoader = new OBJLoader();
 
 let n = 40
 
 const scene = new THREE.Scene()
 // scene.add(new THREE.AxesHelper(5))
+
+function loadObj( path:string, name:string ):Promise<THREE.Group>{
+  return new Promise(function( resolve, reject ){
+    var progress = undefined;
+    loader.setPath( path );
+    loader.load( name + ".obj", resolve, progress, reject );   
+  });
+}
+var manGroup:THREE.Group = await loadObj( "obj/", "FinalBaseMesh" );
+const manMesh:THREE.Mesh = manGroup.children[0] as THREE.Mesh;
+const manArr = manMesh.geometry.getAttribute('position').array
+const posArray4:Float32Array = new Float32Array(manArr.length)
+for(let i=0; i<manArr.length; i+=3) {
+    posArray4[i] = manArr[i];
+    posArray4[i+1] = manArr[i+1] - 10;
+    posArray4[i+2] = manArr[i+2];
+}
+
+manMesh.position.y -= 10;
+scene.add(manMesh)
+const manMesh2:THREE.Mesh = manMesh.clone();
+manMesh.position.x = -10
+manMesh2.position.x = 10
+scene.add(manMesh2)
+manMesh.visible = false;
+manMesh2.visible = false;
+
+// const pointLight1 = new THREE.PointLight(0xffffff, 10);
+// const pointLight2 = new THREE.PointLight(0xffffff, 10);
+// pointLight1.position.x = 5
+// pointLight2.position.x = -5
+// scene.add(pointLight1)
+// scene.add(pointLight2)
 
 const camera = new THREE.PerspectiveCamera(
     50,
@@ -48,14 +84,16 @@ for(let i=0; i < n; i++) {
     for(let j=0; j<n; j++) {
         for(let k=0; k<n; k++) {
             const off = [
-                i*j*k,
-                i*j*k,
-                i*j*k
+                0,0,0
+                // 0.001*i*j*k,
+                // 0.001*i*j*k,
+                // 0.001*i*j*k
             ]
             const scale = [
-                0.1,
-                0.1,
-                0.1
+                1,1,1
+                // 0.1,
+                // 0.1,
+                // 0.1
             ]
             posArray2[3*(n*n*i + n*j + k) + 0] = off[0] + scale[0]*(i - (n-1)/2);
             posArray2[3*(n*n*i + n*j + k) + 1] = off[1] + scale[1]*(j - (n-1)/2);
@@ -145,16 +183,15 @@ function animate() {
     const time = clock.getElapsedTime()
     requestAnimationFrame(animate)
 
-
-    // scene.rotateY(0.0001)
+    scene.rotateY(0.003)
     // scene.rotateX(0.001)
     
     // sphereData.thetaLength = time/2000
     // sphereData.widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
-    const t = THREE.MathUtils.clamp(1.01*Math.sin(time/400), 0, 1)
+    const t = THREE.MathUtils.clamp(1.01*Math.sin(time/6), 0, 1)
     const newArray:Float32Array = morph(
         posArray, 
-        posArray2,
+        posArray4,
         // morph(
         //     posArray2,
         //     posArray3,
@@ -168,6 +205,10 @@ function animate() {
     latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(newArray, 3))
     // latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(posArray2, 3))
     
+    if(t == 1) {
+        manMesh.visible = true;
+        manMesh2.visible = true;
+    }
     
     render()
     stats.update()
