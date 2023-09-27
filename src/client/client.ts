@@ -4,13 +4,16 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { GUI } from 'dat.gui'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 
-const loader:OBJLoader = new OBJLoader();
+const stats = new Stats()
+document.body.appendChild(stats.dom)
+const gui = new GUI()
+const clock = new THREE.Clock()
 
 let n = 40
-
 const scene = new THREE.Scene()
-// scene.add(new THREE.AxesHelper(5))
 
+///
+const loader:OBJLoader = new OBJLoader();
 function loadObj( path:string, name:string ):Promise<THREE.Group>{
   return new Promise(function( resolve, reject ){
     var progress = undefined;
@@ -36,7 +39,7 @@ manMesh2.position.x = 10
 scene.add(manMesh2)
 manMesh.visible = false;
 manMesh2.visible = false;
-console.log(manMesh)
+////
 
 const pointLight1 = new THREE.PointLight(0xff0055, 10);
 const pointLight2 = new THREE.PointLight(0x5500ff, 10);
@@ -44,6 +47,8 @@ const pointLight2 = new THREE.PointLight(0x5500ff, 10);
 // pointLight2.position.x = -5
 scene.add(pointLight1)
 scene.add(pointLight2)
+
+/////
 
 const camera = new THREE.PerspectiveCamera(
     50,
@@ -59,6 +64,7 @@ camera.position.x = 5
 camera.position.y = 0
 camera.position.z = 5
 
+/////
 const renderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
 // renderer.setClearColor(0x000000, 0.0);
@@ -66,7 +72,31 @@ document.body.appendChild(renderer.domElement)
 
 new OrbitControls(camera, renderer.domElement)
 
+/////
+
 // const sphereGeometry = new THREE.BoxGeometry(10,10,10,10,10,10)
+// const sphereGeometry = new THREE.SphereGeometry(10)
+// const material = new THREE.MeshBasicMaterial({
+//     color: 0x0000ff,
+//     wireframe: true,
+// })
+// const sphere = new THREE.Mesh(sphereGeometry, material)
+// scene.add(sphere)
+
+/////////
+
+const latticeGeo = new THREE.BufferGeometry;
+const posArray:Float32Array = new Float32Array(3*n*n*n);
+for(let i=0; i < n; i++) {
+    for(let j=0; j<n; j++) {
+        for(let k=0; k<n; k++) {
+            posArray[3*(n*n*i + n*j + k) + 0] = i - (n-1)/2;
+            posArray[3*(n*n*i + n*j + k) + 1] = j - (n-1)/2;
+            posArray[3*(n*n*i + n*j + k) + 2] = k - (n-1)/2;
+        }
+    }
+}
+
 // const posArray2 = new Float32Array(3*11*11*(10));
 // for(let i=0; i<10; i++) {
 //     const sphereGeometry = new THREE.SphereGeometry(2*(i+1),10,10)
@@ -78,6 +108,19 @@ new OrbitControls(camera, renderer.domElement)
 //         } 
 //         posArray2[11*11*3*i + j] = k + geoArr[j]
 //     }
+// }
+
+// const posArray2 = sphereGeometry.getAttribute('position').array
+// const sArr = sphereGeometry.getAttribute('position').array;
+// const posArray2:Float32Array = new Float32Array(sArr.length);
+// for(let i=0; i<sArr.length; i++) {
+    // posArray2[i] = sArr[i]
+// }
+
+// for(let i=0; i<n*n*n; i+=3) {
+//     posArray2[i] = 25*Math.sin(Math.PI*2*i/(n*n*n));
+//     posArray2[i+1] = 25*Math.cos(Math.PI*2*i/(n*n*n));
+//     posArray2[i+2] = 0;
 // }
 
 const posArray2:Float32Array = new Float32Array(3*n*n*n);
@@ -103,57 +146,6 @@ for(let i=0; i < n; i++) {
     }
 }
 
-const sphereGeometry = new THREE.SphereGeometry(10)
-const material = new THREE.MeshBasicMaterial({
-    color: 0x0000ff,
-    wireframe: true,
-})
-const sphere = new THREE.Mesh(sphereGeometry, material)
-scene.add(sphere)
-console.log(sphere)
-
-const latticeGeo = new THREE.BufferGeometry;
-const posArray:Float32Array = new Float32Array(3*n*n*n);
-for(let i=0; i < n; i++) {
-    for(let j=0; j<n; j++) {
-        for(let k=0; k<n; k++) {
-            posArray[3*(n*n*i + n*j + k) + 0] = i - (n-1)/2;
-            posArray[3*(n*n*i + n*j + k) + 1] = j - (n-1)/2;
-            posArray[3*(n*n*i + n*j + k) + 2] = k - (n-1)/2;
-        }
-    }
-}
-latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
-const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
-    size:0.005,
-    color: 0xffffff
-
-}))
-scene.add(latticeMesh)
-
-// const posArray2 = sphereGeometry.getAttribute('position').array
-// const sArr = sphereGeometry.getAttribute('position').array;
-// const posArray2:Float32Array = new Float32Array(sArr.length);
-// for(let i=0; i<sArr.length; i++) {
-    // posArray2[i] = sArr[i]
-// }
-
-// const posArray2:Float32Array = new Float32Array(3*n*n*n);
-// for(let i=0; i < n; i++) {
-//     for(let j=0; j<n; j++) {
-//         for(let k=0; k<n; k++) {
-//             posArray2[3*(n*n*i + n*j + k) + 0] = i - (n-1)/2;
-//             posArray2[3*(n*n*i + n*j + k) + 1] = j - (n-1)/2;
-//             posArray2[3*(n*n*i + n*j + k) + 2] = 0;
-//         }
-//     }
-// }
-// for(let i=0; i<n*n*n; i+=3) {
-//     posArray2[i] = 25*Math.sin(Math.PI*2*i/(n*n*n));
-//     posArray2[i+1] = 25*Math.cos(Math.PI*2*i/(n*n*n));
-//     posArray2[i+2] = 0;
-// }
-
 const posArray3:Float32Array = new Float32Array(3*n*n*n);
 for(let i=0; i < n; i++) {
     for(let j=0; j<n; j++) {
@@ -165,7 +157,15 @@ for(let i=0; i < n; i++) {
     }
 }
 
+latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
+const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
+    size:0.005,
+    color: 0xffffff
 
+}))
+scene.add(latticeMesh)
+
+///////////
 
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
@@ -176,26 +176,21 @@ function onWindowResize() {
     render()
 }
 
-const stats = new Stats()
-document.body.appendChild(stats.dom)
+///////////
 
-const gui = new GUI()
-
-
-const clock = new THREE.Clock()
 function animate() {
-    const time = clock.getElapsedTime()
     requestAnimationFrame(animate)
-    scene.rotateY(0.003)
     // scene.rotateX(0.001)
+    scene.rotateY(0.003)
+    const time = clock.getElapsedTime()
+
     pointLight1.position.x = -10 +5*Math.sin(5*time) 
     pointLight1.position.z = 5*Math.cos(5*time) 
     pointLight2.position.x = 10 + 5*Math.sin(5*time) 
     pointLight2.position.z = 5*Math.cos(5*time) 
     
-    // sphereData.thetaLength = time/2000
-    // sphereData.widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
     const t = THREE.MathUtils.clamp(1.01*Math.sin(time/6), 0, 1)
+    // const t = 1;
     const newArray:Float32Array = morph(
         posArray, 
         posArray4,
@@ -204,11 +199,9 @@ function animate() {
         //     posArray3,
         //     t
         // ), 
-        // 1,
         t
-        )
-    // const newArray:Float32Array = morph(posArray, posArray3, 1)
-    // console.log(newArray.length)
+    )
+
     latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(newArray, 3))
     // latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(posArray2, 3))
     
@@ -216,17 +209,18 @@ function animate() {
         manMesh.visible = true;
         manMesh2.visible = true;
     }
-    sphere.scale.set(t,t,t)
+    // sphere.scale.set(t,t,t)
     if(time > 36) {
         manMesh.position.z += 0.01*(t-36)
         manMesh2.position.z += 0.01*(t-36)
     }
     // camera.fov = 5 + Math.abs(100*Math.sin(time/5))
+    
+    
+    
     camera.updateProjectionMatrix()
-
-
-    render()
     stats.update()
+    render()
 }
 
 function render() {
