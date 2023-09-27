@@ -36,13 +36,14 @@ manMesh2.position.x = 10
 scene.add(manMesh2)
 manMesh.visible = false;
 manMesh2.visible = false;
+console.log(manMesh)
 
-// const pointLight1 = new THREE.PointLight(0xffffff, 10);
-// const pointLight2 = new THREE.PointLight(0xffffff, 10);
+const pointLight1 = new THREE.PointLight(0xff0055, 10);
+const pointLight2 = new THREE.PointLight(0x5500ff, 10);
 // pointLight1.position.x = 5
 // pointLight2.position.x = -5
-// scene.add(pointLight1)
-// scene.add(pointLight2)
+scene.add(pointLight1)
+scene.add(pointLight2)
 
 const camera = new THREE.PerspectiveCamera(
     50,
@@ -52,7 +53,7 @@ const camera = new THREE.PerspectiveCamera(
 )
 
 // const camera = new THREE.OrthographicCamera(
-//     -10,10,10,-10,0.001,100
+//     -10,10,10,-10,0.001,1000
 // )
 camera.position.x = 5
 camera.position.y = 0
@@ -60,7 +61,7 @@ camera.position.z = 5
 
 const renderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
-renderer.setClearColor(0x000000, 0.0);
+// renderer.setClearColor(0x000000, 0.0);
 document.body.appendChild(renderer.domElement)
 
 new OrbitControls(camera, renderer.domElement)
@@ -102,12 +103,14 @@ for(let i=0; i < n; i++) {
     }
 }
 
-// const material = new THREE.MeshBasicMaterial({
-//     color: 0x0000ff,
-//     wireframe: true,
-// })
-// const sphere = new THREE.Mesh(sphereGeometry, material)
-// scene.add(sphere)
+const sphereGeometry = new THREE.SphereGeometry(10)
+const material = new THREE.MeshBasicMaterial({
+    color: 0x0000ff,
+    wireframe: true,
+})
+const sphere = new THREE.Mesh(sphereGeometry, material)
+scene.add(sphere)
+console.log(sphere)
 
 const latticeGeo = new THREE.BufferGeometry;
 const posArray:Float32Array = new Float32Array(3*n*n*n);
@@ -166,7 +169,8 @@ for(let i=0; i < n; i++) {
 
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight
+    //@ts-ignore
+    if(!camera.isOrthographicCamera) camera.aspect = window.innerWidth / window.innerHeight
     camera.updateProjectionMatrix()
     renderer.setSize(window.innerWidth, window.innerHeight)
     render()
@@ -182,9 +186,12 @@ const clock = new THREE.Clock()
 function animate() {
     const time = clock.getElapsedTime()
     requestAnimationFrame(animate)
-
     scene.rotateY(0.003)
     // scene.rotateX(0.001)
+    pointLight1.position.x = -10 +5*Math.sin(5*time) 
+    pointLight1.position.z = 5*Math.cos(5*time) 
+    pointLight2.position.x = 10 + 5*Math.sin(5*time) 
+    pointLight2.position.z = 5*Math.cos(5*time) 
     
     // sphereData.thetaLength = time/2000
     // sphereData.widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
@@ -209,7 +216,15 @@ function animate() {
         manMesh.visible = true;
         manMesh2.visible = true;
     }
-    
+    sphere.scale.set(t,t,t)
+    if(time > 36) {
+        manMesh.position.z += 0.01*(t-36)
+        manMesh2.position.z += 0.01*(t-36)
+    }
+    // camera.fov = 5 + Math.abs(100*Math.sin(time/5))
+    camera.updateProjectionMatrix()
+
+
     render()
     stats.update()
 }
