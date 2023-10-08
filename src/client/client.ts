@@ -8,6 +8,7 @@ const stats = new Stats()
 document.body.appendChild(stats.dom)
 const gui = new GUI()
 const clock = new THREE.Clock()
+let time:number;
 
 let n = 40
 const scene = new THREE.Scene()
@@ -28,7 +29,7 @@ const manMesh:THREE.Mesh = manGroup.children[0] as THREE.Mesh;
 const manArr = manMesh.geometry.getAttribute('position').array
 const posArray4:Float32Array = new Float32Array(manArr.length)
 for(let i=0; i<manArr.length; i+=3) {
-    posArray4[i] = manArr[i]+40;
+    posArray4[i] = manArr[i];
     posArray4[i+1] = manArr[i+1]-10;
     posArray4[i+2] = manArr[i+2];
 }
@@ -61,7 +62,7 @@ pianoMesh.material.color = new THREE.Color(0xffffff)
 //@ts-ignore
 scene.add(pianoMesh)
 manMesh.visible = false;
-pianoMesh.visible = true;
+pianoMesh.visible = false;
 ////
 
 const pointLight1 = new THREE.PointLight(0xff0055, 10);
@@ -83,7 +84,7 @@ const camera = new THREE.PerspectiveCamera(
 // const camera = new THREE.OrthographicCamera(
 //     -10,10,10,-10,0.001,1000
 // )
-camera.position.x = 170
+camera.position.x = 70
 camera.position.y = 0
 camera.position.z = 70
 
@@ -207,9 +208,9 @@ function onWindowResize() {
 
 function animate() {
     requestAnimationFrame(animate)
-    scene.rotateX(-0.01)
+    // scene.rotateX(-0.01)
     // scene.rotateY(0.003)
-    const time = clock.getElapsedTime()
+    time = clock.getElapsedTime()
 
     pointLight1.position.x = -10 +5*Math.sin(5*time) 
     pointLight1.position.z = 5*Math.cos(5*time) 
@@ -228,7 +229,8 @@ function animate() {
     //     // ), 
     //     time
     // )
-    const newArray:Float32Array = burn(rearrangeArr(posArray4), time)
+    // const newArray:Float32Array = wave(burn(rearrangeArr(posArray), time))
+    const newArray:Float32Array = wave(posArray)
     // const newArray:Float32Array = burn(posArray4, time)
 
     latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(newArray, 3))
@@ -259,6 +261,49 @@ function render() {
 animate()
 
 ///////////
+
+function wave(arr:Float32Array) {
+    let ret = new Float32Array(arr.length);
+    for(let i=0; i<arr.length; i+=3) {
+        const ind = Math.floor(i/3)
+        let x = arr[3*ind + 0]
+        let y = arr[3*ind + 1]
+        let z = arr[3*ind + 2]
+        let posVec = new THREE.Vector3(x,y,z)
+        posVec = disp(posVec, 0.7, 0.5, 5)
+
+        ret[3*ind + 0] = posVec.x
+        ret[3*ind + 1] = posVec.y
+        ret[3*ind + 2] = posVec.z 
+    }
+    return ret;
+}
+
+function disp(vec:THREE.Vector3, A:number, k:number, w:number):THREE.Vector3 {
+    //Plane waves along axes
+    // vec.x +=  A*Math.sin(k*vec.x + w*time)
+    // vec.y +=  A*Math.sin(k*vec.y + w*time)
+    // vec.z +=  A*Math.sin(k*vec.z + w*time)
+
+    //Sin waves along axes
+    // vec.x += A*Math.sin(k*vec.y + w*time)
+
+    //Composite waves
+    // vec.x += A*Math.sin(k*vec.z + k*vec.y + w*time)
+
+    //3D Radial waves
+    let r = vec.length()
+    let disp = 0.1*Math.sin(r - 5*time);
+    vec.multiplyScalar(1 + disp)
+
+    //2D Radial waves
+    // let r = Math.sqrt(vec.x*vec.x + vec.y*vec.y)
+    // let disp = 0.1*Math.sin(r - 5*time)
+    // vec.multiplyScalar(1 + disp)
+
+
+    return vec;
+}
 
 function burn(arr:Float32Array, time:number) {
     //manArr is 146754
