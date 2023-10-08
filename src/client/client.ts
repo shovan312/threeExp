@@ -22,24 +22,46 @@ function loadObj( path:string, name:string ):Promise<THREE.Group>{
     loader.load( name + ".obj", resolve, progress, reject );   
   });
 }
+
 var manGroup:THREE.Group = await loadObj( "obj/", "FinalBaseMesh" );
 const manMesh:THREE.Mesh = manGroup.children[0] as THREE.Mesh;
 const manArr = manMesh.geometry.getAttribute('position').array
 const posArray4:Float32Array = new Float32Array(manArr.length)
 for(let i=0; i<manArr.length; i+=3) {
-    posArray4[i] = manArr[i];
-    posArray4[i+1] = manArr[i+1] - 10;
+    posArray4[i] = manArr[i]+40;
+    posArray4[i+1] = manArr[i+1]-10;
     posArray4[i+2] = manArr[i+2];
+}
+
+var pianoGroup:THREE.Group = await loadObj( "obj/piano/", "10384_GrandPiano" );
+const pianoMesh:THREE.Mesh = pianoGroup.children[0] as THREE.Mesh;
+const pianoArr = pianoMesh.geometry.getAttribute('position').array
+const posArray5:Float32Array = new Float32Array(pianoArr.length)
+for(let i=0; i<pianoArr.length; i+=3) {
+    pianoArr[i] *= 0.2
+    pianoArr[i+1] *= 0.2
+    pianoArr[i+2] *= 0.2
+}
+for(let i=0; i<pianoArr.length; i+=3) {
+    posArray5[i] = pianoArr[i]+40;
+    posArray5[i+1] = pianoArr[i+1]-10;
+    posArray5[i+2] = pianoArr[i+2];
 }
 
 manMesh.position.y -= 10;
 scene.add(manMesh)
-const manMesh2:THREE.Mesh = manMesh.clone();
 manMesh.position.x = -10
-manMesh2.position.x = 10
-scene.add(manMesh2)
+pianoMesh.position.x = 40
+pianoMesh.position.y = -10
+
+//@ts-ignore
+pianoMesh.material.wireframe = false
+//@ts-ignore
+pianoMesh.material.color = new THREE.Color(0xffffff)
+//@ts-ignore
+scene.add(pianoMesh)
 manMesh.visible = false;
-manMesh2.visible = false;
+pianoMesh.visible = true;
 ////
 
 const pointLight1 = new THREE.PointLight(0xff0055, 10);
@@ -61,7 +83,7 @@ const camera = new THREE.PerspectiveCamera(
 // const camera = new THREE.OrthographicCamera(
 //     -10,10,10,-10,0.001,1000
 // )
-camera.position.x = 70
+camera.position.x = 170
 camera.position.y = 0
 camera.position.z = 70
 
@@ -185,7 +207,7 @@ function onWindowResize() {
 
 function animate() {
     requestAnimationFrame(animate)
-    // scene.rotateX(0.001)
+    scene.rotateX(-0.01)
     // scene.rotateY(0.003)
     const time = clock.getElapsedTime()
 
@@ -196,16 +218,18 @@ function animate() {
     
     const t = THREE.MathUtils.clamp(1.01*Math.sin(time/6), 0, 1)
     // const t = 1;
-    const newArray:Float32Array = morph(
-        posArray, 
-        posArray4,
-        // morph(
-        //     posArray2,
-        //     posArray3,
-        //     t
-        // ), 
-        t
-    )
+    // const newArray:Float32Array = morph(
+    //     posArray5, 
+    //     posArray4,
+    //     // morph(
+    //     //     posArray2,
+    //     //     posArray3,
+    //     //     t
+    //     // ), 
+    //     time
+    // )
+    const newArray:Float32Array = burn(rearrangeArr(posArray4), time)
+    // const newArray:Float32Array = burn(posArray4, time)
 
     latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(newArray, 3))
     // latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(posArray2, 3))
@@ -235,39 +259,65 @@ animate()
 
 ///////////
 
-function morph(from:Float32Array, to:Float32Array, t:number): Float32Array {
-    if(from.length == to.length) {
-        const ret = new Float32Array(from.length);
-        for(let i = 0; i < from.length; i+=3) {
+function burn(arr:Float32Array, time:number) {
+    //manArr is 146754
+    const len = arr.length/3
+    const ret = new Float32Array(arr.length)
+    const winLen = Math.floor(len/3)
+    const winStart = time*70000 % (len)
+    const winEnd =( winLen + winStart) % (len)
+    const isValid = false
+    for(let i=0; i<arr.length; i+=3) {
+        const ind = Math.floor(i/3)
+        let isValid = false;
+        if (winEnd > winStart) {
+            isValid = ind > winStart && ind < winEnd
+        }
+        else {
+            isValid = (ind > 0 && ind < winEnd) || (ind > winStart && ind < len)
+        }
+        if ( isValid) {  
+            ret[i + 0] = arr[i + 0]; 
+            ret[i + 1] = arr[i + 1]; 
+            ret[i + 2] = arr[i + 2];
+        }         
+    }
+    return ret;
+}
 
-            ret[i + 0] = from[i + 0] + t*(to[i + 0] - from[i + 0])
-            ret[i + 1] = from[i + 1] + t*(to[i + 1] - from[i + 1])
-            ret[i + 2] = from[i + 2] + t*(to[i + 2] - from[i + 2])
-        }
-        return ret
-    }
-    else if(from.length > to.length) {
-        const ret = new Float32Array(from.length);
-        for(let i = 0; i < from.length; i+=3) {
-            const ind = Math.floor(i/3)
-            const newInd = ind*100003%(to.length/3)
-            ret[3*ind + 0] = from[3*ind + 0] + t*(to[3*newInd + 0] - from[3*ind + 0])
-            ret[3*ind + 1] = from[3*ind + 1] + t*(to[3*newInd + 1] - from[3*ind + 1])
-            ret[3*ind + 2] = from[3*ind + 2] + t*(to[3*newInd + 2] - from[3*ind + 2])
-        }
-        return ret
-    }
-    else {
+function morph(from:Float32Array, to:Float32Array, time:number): Float32Array {
+    // if(from.length == to.length) {
+    //     const ret = new Float32Array(from.length);
+    //     for(let i = 0; i < from.length; i+=3) {
+    //         ret[i + 0] = from[i + 0] + t*(to[i + 0] - from[i + 0])
+    //         ret[i + 1] = from[i + 1] + t*(to[i + 1] - from[i + 1])
+    //         ret[i + 2] = from[i + 2] + t*(to[i + 2] - from[i + 2])
+    //     }
+    //     return ret
+    // }
+    // else if(from.length > to.length) {
+    //     const ret = new Float32Array(from.length);
+    //     for(let i = 0; i < from.length; i+=3) {
+    //         const ind = Math.floor(i/3)
+    //         const newInd = ind*100003%(to.length/3)
+    //         ret[3*ind + 0] = from[3*ind + 0] + t*(to[3*newInd + 0] - from[3*ind + 0])
+    //         ret[3*ind + 1] = from[3*ind + 1] + t*(to[3*newInd + 1] - from[3*ind + 1])
+    //         ret[3*ind + 2] = from[3*ind + 2] + t*(to[3*newInd + 2] - from[3*ind + 2])
+    //     }
+    //     return ret
+    // }
+    // else {
         const ret = new Float32Array(to.length);
         for(let i = 0; i < to.length; i+=3) {
             const ind = Math.floor(i/3)
             const newInd = ind*100003%(to.length/3)
+            const t = THREE.MathUtils.clamp(1.01*Math.sin(time + ind/3*(to.length/3)), 0, 1)
             ret[3*ind + 0] = from[3*newInd + 0] + t*(to[3*ind + 0] - from[3*newInd + 0])
             ret[3*ind + 1] = from[3*newInd + 1] + t*(to[3*ind + 1] - from[3*newInd + 1])
             ret[3*ind + 2] = from[3*newInd + 2] + t*(to[3*ind + 2] - from[3*newInd + 2])
         }
         return ret
-    }
+    // }
 
 }
 
@@ -278,8 +328,8 @@ function rearrangeArr(inp:Float32Array):Float32Array {
             inp[i], inp[i+1], inp[i+2]
         ));
     }
-    // inp2Vec.sort(byY)
-    inp2Vec.sort(byR)
+    inp2Vec.sort(byZ)
+    // inp2Vec.sort(byR)
     let out:Float32Array = new Float32Array(inp.length)
     for(let i=0; i<inp2Vec.length; i++) {
         out[3*i + 0] = inp2Vec[i].x;
