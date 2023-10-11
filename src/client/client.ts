@@ -34,35 +34,10 @@ for(let i=0; i<manArr.length; i+=3) {
     posArray4[i+2] = manArr[i+2];
 }
 
-var pianoGroup:THREE.Group = await loadObj( "obj/piano/", "10384_GrandPiano" );
-const pianoMesh:THREE.Mesh = pianoGroup.children[0] as THREE.Mesh;
-const pianoArr = pianoMesh.geometry.getAttribute('position').array
-const posArray5:Float32Array = new Float32Array(pianoArr.length)
-for(let i=0; i<pianoArr.length; i+=3) {
-    pianoArr[i] *= 0.2
-    pianoArr[i+1] *= 0.2
-    pianoArr[i+2] *= 0.2
-}
-for(let i=0; i<pianoArr.length; i+=3) {
-    posArray5[i] = pianoArr[i]+40;
-    posArray5[i+1] = pianoArr[i+1]-10;
-    posArray5[i+2] = pianoArr[i+2];
-}
-
+manMesh.position.x = -10
 manMesh.position.y -= 10;
 scene.add(manMesh)
-manMesh.position.x = -10
-pianoMesh.position.x = 40
-pianoMesh.position.y = -10
-
-//@ts-ignore
-pianoMesh.material.wireframe = false
-//@ts-ignore
-pianoMesh.material.color = new THREE.Color(0xffffff)
-//@ts-ignore
-scene.add(pianoMesh)
 manMesh.visible = false;
-pianoMesh.visible = false;
 ////
 
 const pointLight1 = new THREE.PointLight(0xff0055, 10);
@@ -91,7 +66,7 @@ camera.position.z = 70
 /////
 const renderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
-// renderer.setClearColor(0x000000, 0.0);
+renderer.setClearColor(0x000000, 0.0);
 document.body.appendChild(renderer.domElement)
 
 new OrbitControls(camera, renderer.domElement)
@@ -100,16 +75,20 @@ new OrbitControls(camera, renderer.domElement)
 
 // const sphereGeometry = new THREE.BoxGeometry(10,10,10,10,10,10)
 const sphereGeometry = new THREE.SphereGeometry(10)
-// const material = new THREE.MeshBasicMaterial({
-//     color: 0x0000ff,
-//     wireframe: true,
-// })
-// const sphere = new THREE.Mesh(sphereGeometry, material)
-// scene.add(sphere)
+const material = new THREE.MeshBasicMaterial({
+    color: 0x0000ff,
+    wireframe: true,
+    // reflectivity: 1
+})
+const sphere = new THREE.Mesh(sphereGeometry, material)
+scene.add(sphere)
 
 /////////
 
 const latticeGeo = new THREE.BufferGeometry;
+
+let colors:any[] = []
+const color = new THREE.Color();
 let posArray:Float32Array = new Float32Array(3*n*n*n);
 for(let i=0; i < n; i++) {
     for(let j=0; j<n; j++) {
@@ -117,6 +96,9 @@ for(let i=0; i < n; i++) {
             posArray[3*(n*n*i + n*j + k) + 0] = i - (n-1)/2;
             posArray[3*(n*n*i + n*j + k) + 1] = j - (n-1)/2;
             posArray[3*(n*n*i + n*j + k) + 2] = k - (n-1)/2;
+
+            color.setRGB(i/n,j/n,k/n,THREE.SRGBColorSpace)
+            colors.push(color.r, color.g, color.b)
         }
     }
 }
@@ -187,10 +169,12 @@ posArray2 = rearrangeArr(posArray2)
 
 latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
 const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
-    size:0.005,
-    color: 0xffffff
-
+    size:0.1,
+    // color: 0xffffff,
+    vertexColors: true
 }))
+console.log(colors)
+latticeGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
 scene.add(latticeMesh)
 
 ///////////
@@ -208,7 +192,7 @@ function onWindowResize() {
 
 function animate() {
     requestAnimationFrame(animate)
-    // scene.rotateX(-0.01)
+    // scene.rotateX(-0.001)
     // scene.rotateY(0.003)
     time = clock.getElapsedTime()
 
@@ -229,22 +213,28 @@ function animate() {
     //     // ), 
     //     time
     // )
-    // const newArray:Float32Array = wave(burn(rearrangeArr(posArray), time))
-    const newArray:Float32Array = wave(posArray)
+    // const newArray:Float32Array = wave(burn(posArray4, time), 0.7, 0.5, 5)
+    // const newArray:Float32Array = wave(posArray, 0.7, 0.5, 5)
+    const newArray:Float32Array = posArray;
     // const newArray:Float32Array = burn(posArray4, time)
+    let newColArray = [];
+    for(let i=0; i<colors.length; i+=3) {
+        // newColArray.push(colors[i]*(0.5+0.2*Math.sin(10*time)))
+        let r = colors[i + 0]
+        let g = colors[i + 1]
+        let b = colors[i + 2]
+        // newColArray.push(r)
+        // newColArray.push(g)
+        // newColArray.push(b)
+        newColArray.push(r + (0.2-r)*Math.sin(g + 3*time))
+        newColArray.push(g + (0.2-g)*Math.cos(b + time))
+        newColArray.push(b + (1-1)*Math.sin(r + 4*time))
+    }
 
     latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(newArray, 3))
+    latticeMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(newColArray, 3))
     // latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(posArray2, 3))
     
-    // if(t == 1) {
-    //     manMesh.visible = true;
-    //     manMesh2.visible = true;
-    // }
-    // // sphere.scale.set(t,t,t)
-    // if(time > 36) {
-    //     manMesh.position.z += 0.01*(t-36)
-    //     manMesh2.position.z += 0.01*(t-36)
-    // }
     // camera.fov = 5 + Math.abs(100*Math.sin(time/5))
     
     
@@ -261,7 +251,7 @@ animate()
 
 ///////////
 
-function wave(arr:Float32Array) {
+function wave(arr:Float32Array, A:number, k:number, w:number) {
     let ret = new Float32Array(arr.length);
     for(let i=0; i<arr.length; i+=3) {
         const ind = Math.floor(i/3)
@@ -269,7 +259,7 @@ function wave(arr:Float32Array) {
         let y = arr[3*ind + 1]
         let z = arr[3*ind + 2]
         let posVec = new THREE.Vector3(x,y,z)
-        posVec = disp(posVec, 0.7, 0.5, 5)
+        posVec = disp(posVec, A, k, w)
 
         ret[3*ind + 0] = posVec.x
         ret[3*ind + 1] = posVec.y
@@ -288,7 +278,7 @@ function disp(vec:THREE.Vector3, A:number, k:number, w:number):THREE.Vector3 {
     // vec.x += A*Math.sin(k*vec.y + w*time)
 
     //Composite waves
-    // vec.x += A*Math.sin(k*vec.z + k*vec.y + w*time)
+    // vec.x += 0.1*vec.x*A*Math.sin(k*vec.z + k*vec.y + w*time)
 
     //3D Radial waves
     let r = vec.length()
@@ -311,7 +301,6 @@ function burn(arr:Float32Array, time:number) {
     const winLen = Math.floor(len/3)
     const winStart = time*70000 % (len)
     const winEnd =( winLen + winStart) % (len)
-    const isValid = false
     for(let i=0; i<arr.length; i+=3) {
         const ind = Math.floor(i/3)
         let isValid = false;
