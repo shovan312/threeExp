@@ -2,6 +2,7 @@ import Stats from "three/examples/jsm/libs/stats.module";
 import {GUI} from "dat.gui";
 import * as THREE from "three";
 import {OBJLoader} from "three/examples/jsm/loaders/OBJLoader";
+import {Midi} from "@tonejs/midi";
 
 export const
     stats = new Stats(),
@@ -18,6 +19,14 @@ export function loadObj( path:string, name:string ):Promise<THREE.Group>{
         let progress = undefined;
         loader.setPath( path );
         loader.load( name + ".obj", resolve, progress, reject );
+    });
+}
+
+export function loadMidi( path:string):Promise<Midi>{
+    return new Promise(function( resolve, reject ){
+        Midi.fromUrl(path).then(
+            resolve, reject
+        )
     });
 }
 

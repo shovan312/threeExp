@@ -1,21 +1,17 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import {loadObj, scene, clock, stats, camera, renderer, lights} from "./setup";
+import {loadObj, scene, clock, stats, camera, renderer, lights, loadMidi} from "./setup";
 import {getBallPoints, getCube, getGeometryPoints, getRingPoints} from "./points";
 import {wave, burn, morph} from './transformations';
+import * as Tone from 'tone';
+import {Header, Midi} from "@tonejs/midi";
+import {TimeSignatureEvent} from "@tonejs/midi/dist/Header";
 
 new OrbitControls(camera, renderer.domElement)
 /////
-let manGroup:THREE.Group = await loadObj("obj/", "FinalBaseMesh");
-let manMesh:THREE.Mesh = manGroup.children[0] as THREE.Mesh;
-manMesh.position.x = -10
-manMesh.position.y -= 10;
-scene.add(manMesh)
-manMesh.visible = false;
-let posArray4 = getGeometryPoints(manMesh.geometry, new THREE.Vector3(0, -10, 0))
-/////
 
 // const sphereGeometry = new THREE.BoxGeometry(10,10,10,10,10,10)
+let spheres:Array<THREE.Mesh> = []
 const sphereGeometry = new THREE.SphereGeometry(10)
 const material = new THREE.MeshBasicMaterial({
     color: 0x0000ff,
@@ -24,6 +20,96 @@ const material = new THREE.MeshBasicMaterial({
 })
 const sphere = new THREE.Mesh(sphereGeometry, material)
 scene.add(sphere)
+spheres.push(sphere)
+/////
+
+type sphereData = {
+    radius: number,
+    widthSegments: number,
+    heightSegments: number,
+    phiStart: number,
+    phiLength: number,
+    thetaStart: number,
+    thetaLength: number,
+}
+
+let spheresData:Array<sphereData>=[];
+spheresData.push({
+    radius: 10,
+    widthSegments: 32,
+    heightSegments: 16,
+    phiStart: 0,
+    phiLength: 2*Math.PI,
+    thetaStart: 0,
+    thetaLength: Math.PI
+})
+function regenerateSphereGeometry(i:number) {
+    const newGeometry = new THREE.SphereGeometry(
+        spheresData[i].radius,
+        spheresData[i].widthSegments,
+        spheresData[i].heightSegments,
+        spheresData[i].phiStart,
+        spheresData[i].phiLength,
+        spheresData[i].thetaStart,
+        spheresData[i].thetaLength
+    )
+    spheres[i].geometry.dispose()
+    spheres[i].geometry = newGeometry
+}
+
+function twoX(mJson:Midi) {
+    for(let i in mJson.tracks) {
+        for(let j in mJson.tracks[i].notes) {
+            let mN = mJson.tracks[i].notes[j]
+            mN.duration /= 2
+            mN.durationTicks /= 2
+            mN.ticks /= 2
+        }
+    }
+}
+
+let midiJson:Midi = await loadMidi('./midi/twinkle_twinkle.mid');
+twoX(midiJson);
+let mH:Header = midiJson.header
+let ppq = mH.ppq
+console.log(ppq)
+let timeSignatures:TimeSignatureEvent[] = mH.timeSignatures
+let tempo:number = mH.tempos.length > 0 ? mH.tempos[0].bpm : 120
+let ts:number = timeSignatures.length > 0 ? timeSignatures[0].timeSignature[0] : 4
+
+let mpt = (ppq*tempo*ts)/(60*1000)
+mpt /= 3.6
+let ticksPerMilli = mpt**(-1)
+let ret = getLimits(midiJson)
+
+let lowestNote = ret[0]
+let highestNote = ret[1]
+console.log(midiJson)
+
+// let numCells = highestNote - lowestNote + 5
+
+function getLimits(mJson:Midi) {
+    let lowestNote = 1000, highestNote = 0
+    for(let i in mJson.tracks) {
+        for(let j in mJson.tracks[i].notes) {
+            let mN = mJson.tracks[i].notes[j].midi
+            lowestNote = Math.min(lowestNote, mN)
+            highestNote = Math.max(highestNote, mN)
+        }
+    }
+    return [lowestNote, highestNote]
+}
+
+
+////
+let manGroup:THREE.Group = await loadObj("obj/", "FinalBaseMesh");
+let manMesh:THREE.Mesh = manGroup.children[0] as THREE.Mesh;
+manMesh.position.x = -10
+manMesh.position.y -= 10;
+scene.add(manMesh)
+manMesh.visible = false;
+let posArray4 = getGeometryPoints(manMesh.geometry, new THREE.Vector3(0, -10, 0))
+
 
 /////////
 let n=40
@@ -45,6 +131,8 @@ const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
 latticeGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
 scene.add(latticeMesh)
 
+
+
 function animate() {
     requestAnimationFrame(animate)
     // scene.rotateX(-0.001)
@@ -56,53 +144,27 @@ function animate() {
     lights[1].position.x = 10 + 5*Math.sin(5*time)
     lights[1].position.z = 5*Math.cos(5*time)
 
-    const t = THREE.MathUtils.clamp(1.01*Math.sin(time/6), 0, 1)
-    // const t = 1;
-    // const newArray:Float32Array = morph(
-    //     posArray5,
-    //     posArray4,
-    //     // morph(
-    //     //     posArray2,
-    //     //     posArray3,
-    //     //     t
-    //     // ),
-    //     time
-    // )
-    // const newArray:Float32Array = wave(burn(posArray4, time), 0.7, 0.5, 5, time)
-    // const newArray:Float32Array = burn(wave(posArray4, 0.7, 0.5, 5, time), time)
-    const newArray:Float32Array = posArray2;
-    // const newArray:Float32Array = burn(posArray4, time)
-    let newColArray = [];
-    for(let i=0; i<newArray.length; i+=3) {
-        // newColArray.push(colors[i]*(0.5+0.2*Math.sin(10*time)))
-        let r = colors[i + 0]
-        let g = colors[i + 1]
-        let b = colors[i + 2]
-        newColArray.push(r + (0.2-r)*Math.sin(g + 3*time))
-        newColArray.push(g + (0.2-g)*Math.cos(b + time))
-        newColArray.push(b + (1-1)*Math.sin(r + 4*time))
 
-
-        // if ( (i/3) % 2 == 0 ) {
-        //     let color = new THREE.Color(25/255, 158/255, 4/255);
-        //     // let color = new THREE.Color(0x0B3B33);
-        //
-        //     newColArray.push(color.r)
-        //     newColArray.push(color.g)
-        //     newColArray.push(color.b)
-        // }
-        // else {
-        //     let color = new THREE.Color(27/255, 51/255, 116/255);
-        //     // let color = new THREE.Color(0x832232);
-        //     newColArray.push(color.r)
-        //     newColArray.push(color.g)
-        //     newColArray.push(color.b)
-        // }
+    let trackCursors = []
+    for(let i in midiJson.tracks) {
+        trackCursors.push([0])
     }
 
-    latticeMesh.geometry.setAttribute('position', new THREE.BufferAttribute(newArray, 3))
-    latticeMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(newColArray, 3))
+    // for(let i in midiJson.tracks) {
+        let track = midiJson.tracks[0]
+        let notes = track.notes
+        for(let j in notes) {
+            if (time*100 > mpt*notes[j].ticks && time*100 < mpt*(notes[j].ticks + notes[j].durationTicks)) {
+                // text(notes[j].name, w/2, h/2 - 200 + i*100)
+                console.log(notes[j].midi)
+                spheresData[0].radius = notes[j].midi
+                regenerateSphereGeometry(0)
 
+                // b[notes[j].midi - lowestNote].move()
+                // b[notes[j].midi - lowestNote].show()
+            }
+        }
+    // }
     // camera.fov = 5 + Math.abs(100*Math.sin(time/5))
     camera.updateProjectionMatrix()
     stats.update()
