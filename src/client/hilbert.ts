@@ -121,14 +121,14 @@ export class Hilbert {
     //     return this.curve;
     // }
 
-    private makeLine(inp:Array<THREE.Vector3>):THREE.Mesh {
+    public makeLine(inp:Array<THREE.Vector3>):THREE.Mesh {
         let geometry = new THREE.BufferGeometry().setFromPoints(inp);
         const line = new MeshLine();
 
         // @ts-ignore
-        line.setGeometry(geometry, function(p) { return 0.1*Math.sin(p*2*Math.PI)});
+        line.setGeometry(geometry, function(p) { return 0.08*Math.sin(p*2*Math.PI)});
         let glassRainbowText = this.texture
-        let color = new THREE.Color(0x00eea0);
+        let color = new THREE.Color(0xee5511);
         const lineMaterial = new MeshLineMaterial({
             map: glassRainbowText,
             useMap: true,
@@ -136,10 +136,10 @@ export class Hilbert {
             opacity: 1,//params.strokes ? .5 : 1,
             dashArray: 0.05,
             dashOffset: 0,
-            dashRatio: 0.1,
+            dashRatio: 0.7,
             // resolution: resolution,
-            sizeAttenuation: true,
-            lineWidth: 1,
+            sizeAttenuation: false,
+            lineWidth: 0.1,
             // depthWrite: false,
             // depthTest: !false, //useMap
             // alphaTest: false ? .5 : 0, //useMap

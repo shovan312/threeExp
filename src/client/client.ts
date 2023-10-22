@@ -41,7 +41,7 @@ scene.add( spotLight );
 
 
 new OrbitControls(camera, renderer.domElement);
-// camera.position.set(0, 0, 18);
+camera.position.set(0, 0, 18);
 
 const gridHelper = new THREE.GridHelper(12, 12);
 gridHelper.rotateX(Math.PI/2)
@@ -55,12 +55,12 @@ for(let i=0; i<3; i++) {
         for(let k=0; k<3; k++) {
             let axis = new THREE.AxesHelper(6);
             if (i==1 && j == 0 && k == 1) continue;
-            // axis.position.set(
-            //     25*(i-1),
-            //         10*(j),
-            //             25*(k-1)
-            // )
-            axis.position.x = 2*(9*i + 3*j + k - 13)
+            axis.position.set(
+                25*(i-1),
+                    10*(j),
+                        25*(k-1)
+            )
+            // axis.position.x = 2*(9*i + 3*j + k - 13)
             axes.push(axis)
             scene.add(axis)
         }
@@ -140,6 +140,21 @@ scene.add( water );
 water.position.y = -0;
 water.rotation.x = Math.PI * - 0.5;
 
+let water2 = new Water( waterGeometry, {
+    // color: '#42daf5',
+    scale: 2,
+    textureWidth: 1024,
+    textureHeight: 1024,
+    flowMap: flowText,
+    normalMap0: nrmlText0,
+    normalMap1: nrmlText1
+} );
+// waterGeometry.computeVertexNormals();
+scene.add( water2 );
+
+water2.position.y = -0.1;
+water2.rotation.x = Math.PI *  0.5;
+
 let sphere = new THREE.Mesh(
     new THREE.SphereGeometry(3, 50, 50),
     new THREE.MeshStandardMaterial({
@@ -164,51 +179,106 @@ function hilbertTrans(from:Array<THREE.Vector3>, to:Array<THREE.Vector3>, howMuc
     return ret;
 }
 
-let h3 = new Hilbert([
+let basicSeed = [
     new THREE.Vector3(-2,-2,0),
     new THREE.Vector3(-2,2,0),
     new THREE.Vector3(2,2,0),
     new THREE.Vector3(2,-2,0),
-], 2);
+]
+let h3 = new Hilbert(basicSeed, 2);
 scene.add(h3.curve);
 h3.texture = cloudText;
+
+let h4 = new Hilbert(basicSeed, 0);
+h4.update(basicSeed, 4)
+h4.texture = cloudText;
+
+let h5 = new Hilbert(basicSeed, 2);
+h5.update(basicSeed, 4)
+h5.texture = cloudText;
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
-    // camera.position.y = 2*Math.sin(2*time)
-    curves.map(c => {
-        // c.position.x = 2*Math.sin(time);
-        // c.position.y = 2*Math.cos(time)
-        // c.position.z = Math.sin(time);
-        return c;
-    });
 
+    // camera.position.y = 2*Math.sin(2*time)
     let noize1 = perlin.noise(2*time,1,0)
     let startTime:number = 1
 
     if(time - startTime > 0 ) {
-        h3.curve.geometry.dispose();
+        // h3.curve.geometry.dispose();
         scene.remove(h3.curve)
         let t = time - startTime
+        // let depth1 = 5
         // let depth = (1 + noize/1.333)
         let depth1 = (1 + noize1/1.333) + (4*Math.sin(t/3.5 - 3 ) / (t/3.5 - 3))
         // let depth = Math.min(2 + 3*Math.sin(t/4)*Math.sin(t), 6);
+        let t2 = t*3
         scene.add(h3.update([
-            new THREE.Vector3(-2,-2,0),
-            new THREE.Vector3(-2,2,10*(0.5 + 0.5*Math.sin(t))),
-            new THREE.Vector3(2,2,10*(0.5 + 0.5*Math.sin(t))),
-            new THREE.Vector3(2,-2,0),
+            new THREE.Vector3(-2 + 2* Math.sin(t2 - Math.PI) ,
+                -2,
+                0),
+            new THREE.Vector3(-2  ,
+                THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI), 2, 4) ,
+                0),
+            new THREE.Vector3(2  ,
+                THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI),2,4) ,
+                0),
+            new THREE.Vector3(2+ 2*Math.sin(t2 - Math.PI) ,
+                -2,
+                0),
         ], depth1))
         //@ts-ignore
         h3.curve.material.dashOffset = -time/100
+        //@ts-ignore
+        h3.curve.material.dashRatio = 0.5 + 0.2*Math.sin(time)
     }
 
-    water.position.z = 4.8*Math.sin(time/3)
-    camera.position.y = 2
-    camera.position.z = 15*Math.sin(time/3)
-    camera.position.x = 15*Math.cos(time/3)
-    camera.rotation.y = Math.PI/2 - time/3
+    if (time/3 > (3/2)*Math.PI) {
+        let t = time/3 - (3/2)*Math.PI
+        scene.remove(h4.curve)
+        scene.add(h4.makeLine(h4.points))
+        h4.curve.translateX(6*Math.cos(t + 3*Math.PI/4))
+        h4.curve.translateY(6*Math.sin(t + 3*Math.PI/4))
+        h4.curve.rotateZ(t)
+        // scene.add(h4.curve)
+
+        scene.remove(h5.curve)
+        scene.add(h5.makeLine(h5.points))
+        h5.curve.position.set(
+            6*Math.cos(t - 1*Math.PI/4),
+            6*Math.sin(t - 1*Math.PI/4),
+            0);
+        // h5Curve.translateX(6*Math.cos(t - 1*Math.PI/4))
+        // h5Curve.translateY(6*Math.sin(t - 1*Math.PI/4))
+        h5.curve.rotateZ(t)
+        // scene.add(h5.curve)
+
+        h3.curve.rotateY(-t)
+        //@ts-ignore
+        h3.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
+        //@ts-ignore
+        h3.curve.material.lineWidth = 0.2 + 0.2*THREE.MathUtils.clamp(Math.sin(time-2),0,1)
+        //@ts-ignore
+        h4.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
+        //@ts-ignore
+        h5.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
+
+
+        camera.position.z = Math.sin(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
+        camera.position.x = Math.cos(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
+        camera.lookAt(new THREE.Vector3(0,0,0))
+
+        scene.remove(gridHelper)
+    }
+    else {
+        camera.position.z = 18*Math.sin(time/3)
+        camera.position.x = 18*Math.cos(time/3)
+        camera.lookAt(new THREE.Vector3(0,0,0))
+    }
+
+    // water.position.z = 4.8*Math.sin(time/3)
+    // camera.position.z = 12
 
     // camera.rotation.x = Math.PI/8*Math.cos(time/3)
     cubeCamera.update( renderer, scene );
@@ -217,16 +287,11 @@ function animate() {
     axesHelper.rotation.x = time
     for(let i=0; i<axes.length; i++) {
         // axes[i].position
-        // axes[i].rotation.x += perlin.noise(time,i,0)/10
-        // axes[i].rotation.y += perlin.noise(time,i,0)
-        // axes[i].rotation.z += perlin.noise(time,i,0)
+        axes[i].rotation.x += perlin.noise(time,i,0)/10
+        axes[i].rotation.y += perlin.noise(time,i,0)
+        axes[i].rotation.z += perlin.noise(time,i,0)
         axes[i].rotation.x = time
     }
-    // for(let i=0; i<grids.length; i++) {
-    //     grids[i].rotation.x += 0.2*perlin.noise(time,i,0)/10
-    //     grids[i].rotation.y += 0.2*perlin.noise(time,i,0)
-    //     grids[i].rotation.z += 0.2*perlin.noise(time,i,0)
-    // }
     gridHelper.rotation.y = time
     renderer.render(scene, camera);
 }
