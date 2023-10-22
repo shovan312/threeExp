@@ -1,423 +1,240 @@
-import * as THREE from 'three'
-import Stats from 'three/examples/jsm/libs/stats.module'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { GUI } from 'dat.gui'
+import * as THREE from 'three';
+import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
+import { Water } from 'three/examples/jsm/objects/Water2.js';
+import {AxesHelper, ColorRepresentation, CubeTexture, GridHelper, LineBasicMaterial} from "three";
+import {Hilbert} from "./hilbert";
+import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise'
 
-type sphereData = {
-    radius: number,
-    widthSegments: number,
-    heightSegments: number,
-    phiStart: number,
-    phiLength: number,
-    thetaStart: number,
-    thetaLength: number,
-}
 
-type cubePipeObj = {
-    cube: THREE.Mesh,
-    velocity: THREE.Vector3
-}
+let material:LineBasicMaterial,sideLen=4, curves:Array<THREE.Line>=[],
+    depth=1, colors:Array<number>=[],
+    lines:Array<Array<THREE.Vector3>> = [],
+maxDepth=6,seedVertices=0
 
-let n = 40
+let flowLine, flowText, nrmlText0, nrmlText1;
+const perlin = new ImprovedNoise();
+/////////////////////////
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+renderer.setClearColor(0x515151);
 
-let pallette = [
-    0x000000,
-    0xff0000,
-    0x00ff00,
-    0x0000ff,
-    0xffff00,
-    0xff00ff,
-    0x00ffff,
-    0xffffff,
-]
-
-const scene = new THREE.Scene()
-
+const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
     45,
     window.innerWidth / window.innerHeight,
     0.1,
     1000
-)
+);
+const clock = new THREE.Clock();
+let ambientLight = new THREE.AmbientLight( 0xe7e7e7, 0.2 );
+scene.add( ambientLight );
 
-const pointLight = new THREE.PointLight(0xffffff, 10, 0, 2)
-const pointLight2 = new THREE.PointLight(0xffffff, 10, 0, 2)
-const pointLight3 = new THREE.PointLight(0xffffff, 10, 0, 1)
-const pointLight4 = new THREE.PointLight(0xffffff, 10, 0, 1)
-const pointLight5 = new THREE.PointLight(0xffffff, 10, 0, 1)
-const pointLight6 = new THREE.PointLight(0xffffff, 10, 0, 1)
-pointLight.position.x = 5
-pointLight2.position.x = -5
-pointLight3.position.x = -20
-pointLight4.position.x = 20
-pointLight5.position.y = -20
-pointLight6.position.y = 20
-scene.add(pointLight)
-scene.add(pointLight2)
-scene.add(pointLight3)
-scene.add(pointLight4)
-scene.add(pointLight5)
-scene.add(pointLight6)
-// const camera = new THREE.OrthographicCamera(
-//     -10,10,10,-10,0.001,100
-// )
-camera.position.set(5,0,5)
+const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+scene.add( directionalLight );
 
-const renderer = new THREE.WebGLRenderer()
-renderer.setSize(window.innerWidth,window.innerHeight)
-document.body.appendChild(renderer.domElement)
+const spotLight = new THREE.SpotLight( 0x0000ff );
+spotLight.position.set( 0, 10, 0 );
 
-const controls = new OrbitControls(camera, renderer.domElement)
+scene.add( spotLight );
 
-/////////////
-const lattices:Array<THREE.Points> = [];
-makeLattice(n, 0.005)
-makeLattice(2*n/3, 0.1)
-////////////
-const spheres:Array<THREE.Mesh> = []
-const spheresData:Array<sphereData> = []
 
-makeSphere(4, 0xff0000)
-makeSphere(4, 0x00ff00)
-makeSphere(4, 0x0000ff)
-spheres[0].position.x = -15
-spheres[2].position.x = 15
-/////////////
 
-const boxes:Array<THREE.Mesh> = []
+new OrbitControls(camera, renderer.domElement);
+// camera.position.set(0, 0, 18);
 
-makeBox(2,2,2, 0x0000ff)
+const gridHelper = new THREE.GridHelper(12, 12);
+gridHelper.rotateX(Math.PI/2)
+scene.add(gridHelper);
+const axesHelper = new THREE.AxesHelper(4);
+scene.add(axesHelper);
 
-for(let i=0; i<10; i++) {
-    makeBox(2,2,2, pallette[1 + i % 7])
-    boxes[i].add(boxes[i+1])
-    boxes[i+1].position.set(0,6,0)
-}
-///////////////////
-
-const rings:Array<THREE.Mesh> = []
-makeRing(7,1, 0xff0000)
-makeRing(15,1, 0x00ff00)
-makeRing(25,1, 0x0000ff)
-rings[0].add(rings[1])
-rings[1].add(rings[2])
-
-/////////////////
-
-const cubePipes:Array<cubePipeObj> = []
-makeCubePipe(lattices[0])
-makeCubePipe(lattices[0])
-makeCubePipe(lattices[0])
-makeCubePipe(lattices[0])
-makeCubePipe(lattices[0])
-makeCubePipe(lattices[0])
-makeCubePipe(lattices[0])
-
-window.addEventListener('resize', onWindowResize, false)
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight
-    camera.updateProjectionMatrix()
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    render()
+let axes:Array<AxesHelper> = []
+for(let i=0; i<3; i++) {
+    for(let j=0; j<3; j++) {
+        for(let k=0; k<3; k++) {
+            let axis = new THREE.AxesHelper(6);
+            if (i==1 && j == 0 && k == 1) continue;
+            // axis.position.set(
+            //     25*(i-1),
+            //         10*(j),
+            //             25*(k-1)
+            // )
+            axis.position.x = 2*(9*i + 3*j + k - 13)
+            axes.push(axis)
+            scene.add(axis)
+        }
+    }
 }
 
-const stats = new Stats()
-document.body.appendChild(stats.dom)
+const cubeRenderTarget = new THREE.WebGLCubeRenderTarget( 256 );
+cubeRenderTarget.texture.type = THREE.HalfFloatType;
 
-const gui = new GUI()
-const camFolder = gui.addFolder('Camera')
-const camPropertiesFolder = camFolder.addFolder('Properties')
-camPropertiesFolder.add(camera, 'fov', 0, 360)
+const cubeCamera = new THREE.CubeCamera( 1, 1000, cubeRenderTarget );
+const loader = new THREE.TextureLoader();
+flowText = loader.load('./Water_1_M_Flow.jpg');
+nrmlText0 = loader.load('./Water_1_M_Normal.jpg');
+nrmlText1 = loader.load('./Water_2_M_Normal.jpg');
+let glassRainbowText = loader.load('./glass-rainbow.jpg');
+let paperText = loader.load('./paper.png');
+let whitePaintText = loader.load('./white-paint.jpg');
+let cloudText = loader.load('./cloud.png');
+// gui = new GUI();
+let cubeTexture:CubeTexture = new THREE.CubeTextureLoader().load([
+    'paperSquare.png',
+    'paperSquare.png',
+    'paperSquare.png',
+    'paperSquare.png',
+    'paperSquare.png',
+    'paperSquare.png'
+])
 
-function regenerateSphereGeometry(i:number) {
-    const newGeometry = new THREE.SphereGeometry(
-        spheresData[i].radius,
-        spheresData[i].widthSegments,
-        spheresData[i].heightSegments,
-        spheresData[i].phiStart,
-        spheresData[i].phiLength,
-        spheresData[i].thetaStart,
-        spheresData[i].thetaLength
-    )
-    spheres[i].geometry.dispose()
-    spheres[i].geometry = newGeometry
+cubeTexture.anisotropy = 0.1
+scene.background = cubeTexture
+
+///////////////////////////////
+
+
+// let h3 = new Hilbert([
+//     new THREE.Vector3(-2,-2,0),
+//     new THREE.Vector3(-2,2,0),
+//     new THREE.Vector3(2,2,0),
+//     new THREE.Vector3(2,-2,0),
+// ], 2);
+// let h4 = new Hilbert([
+//     new THREE.Vector3(-2,-2,0),
+//     new THREE.Vector3(-2,2,0),
+//     new THREE.Vector3(2,2,0),
+//     new THREE.Vector3(2,-2,0),
+// ], 4);
+// scene.add(h3.curve)
+// scene.add(h4.curve)
+// console.log(h3.curve.geometry.getAttribute('position'))
+// console.log(h4.curve.geometry.getAttribute('position'))
+
+// for(let k=0; k<7; k++) {
+//     let currPoints:Array<THREE.Vector3> = hilbertTrans(h3.points, h4.points, k/10)
+//     let flowGeo = new THREE.BufferGeometry().setFromPoints( currPoints )
+//     let material:LineBasicMaterial = new THREE.LineBasicMaterial({
+//         vertexColors: true
+//     })
+//     flowLine = new THREE.Line(flowGeo, material)
+//     curves.push(flowLine)
+//     flowLine.position.z = 3 + k/20
+//     scene.add(flowLine)
+// }
+
+let waterGeometry = new THREE.PlaneGeometry( 80, 80 );
+let water = new Water( waterGeometry, {
+    // color: '#42daf5',
+    scale: 2,
+    textureWidth: 1024,
+    textureHeight: 1024,
+    flowMap: flowText,
+    normalMap0: nrmlText0,
+    normalMap1: nrmlText1
+} );
+waterGeometry.computeVertexNormals();
+scene.add( water );
+
+water.position.y = -0;
+water.rotation.x = Math.PI * - 0.5;
+
+let sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(3, 50, 50),
+    new THREE.MeshStandardMaterial({
+        envMap: cubeRenderTarget.texture,
+        // color: 'red',
+        roughness: 0,
+        metalness: 1,
+    })
+);
+// scene.add(sphere)
+sphere.position.z = -10
+
+function hilbertTrans(from:Array<THREE.Vector3>, to:Array<THREE.Vector3>, howMuch:number):Array<THREE.Vector3>{
+    let ret:Array<THREE.Vector3> = []
+    for(let i = 0; i < from.length; i++) {
+        ret.push(new THREE.Vector3(
+            from[i].x + (to[i].x - from[i].x)*howMuch,
+            from[i].y + (to[i].y - from[i].y)*howMuch,
+            from[i].z + (to[i].z - from[i].z)*howMuch,
+        ))
+    }
+    return ret;
 }
-const debug = document.getElementById('debug1') as HTMLDivElement
-const clock = new THREE.Clock()
+
+let h3 = new Hilbert([
+    new THREE.Vector3(-2,-2,0),
+    new THREE.Vector3(-2,2,0),
+    new THREE.Vector3(2,2,0),
+    new THREE.Vector3(2,-2,0),
+], 2);
+scene.add(h3.curve);
+h3.texture = cloudText;
+
 function animate() {
-    requestAnimationFrame(animate)
-    const time = clock.getElapsedTime()
+    let time:number = clock.getElapsedTime()*1;
 
-    if (time < 9000) {
-        spheres.forEach(sphere =>sphere.visible = false)
-        boxes.forEach(box => box.visible = false)
-        rings.forEach(ring => ring.visible = false)
-    }
-    if (time > 9000) {
-        spheres.forEach(sphere =>sphere.visible = true)
-        boxes.forEach(box => box.visible = true)
-        rings.forEach(ring => ring.visible = true)
-    }
+    // camera.position.y = 2*Math.sin(2*time)
+    curves.map(c => {
+        // c.position.x = 2*Math.sin(time);
+        // c.position.y = 2*Math.cos(time)
+        // c.position.z = Math.sin(time);
+        return c;
+    });
 
-    // scene.rotateY(0.001)
-    scene.rotateX(0.001)
-    
-    // let newPosition:THREE.Vector= path.getPoint((time % 2000)/2000)
-    // let pos:THREE.Vector3 = new THREE.Vector3(
-    //     newPosition.getComponent(0),
-    //     newPosition.getComponent(1),
-    //     newPosition.getComponent(2)
-    // );
-    // sphere.position.copy(pos)
-    // sphere.position.x = 4+Math.sin(time/1000);
-    // sphere.position.z = 4+Math.sin(time/1000);
-    // spheresData[0].heightSegments = Math.floor(3 + Math.abs(30*Math.sin(time/3000)))
-    // spheresData[2].widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
-    spheresData[0].thetaLength = time/2000
-    spheresData[2].phiLength = time/2000
-    regenerateSphereGeometry(0)
-    regenerateSphereGeometry(1)
-    regenerateSphereGeometry(2)
-    render()
+    let noize1 = perlin.noise(2*time,1,0)
+    let startTime:number = 1
 
-    for(let i=0; i<boxes.length; i++) {
-        boxes[i].position.set(
-            1 + 4*Math.cos(time/1000),
-            1 + 4*Math.sin(time/1000),
-            1,
-        )
-        boxes[i].rotation.set(
-            0,
-            0,
-            Math.PI*Math.sin(time/4000),
-        )
-    }
-    boxes[0].rotateX(2*Math.PI*Math.sin(time/2000))
-
-    for(let i=0; i<rings.length; i++) {
-        rings[i].rotation.set(
-            0,
-            Math.PI/2*Math.cos(time/1000),
-            Math.PI/6*Math.sin(time/1000))
+    if(time - startTime > 0 ) {
+        h3.curve.geometry.dispose();
+        scene.remove(h3.curve)
+        let t = time - startTime
+        // let depth = (1 + noize/1.333)
+        let depth1 = (1 + noize1/1.333) + (4*Math.sin(t/3.5 - 3 ) / (t/3.5 - 3))
+        // let depth = Math.min(2 + 3*Math.sin(t/4)*Math.sin(t), 6);
+        scene.add(h3.update([
+            new THREE.Vector3(-2,-2,0),
+            new THREE.Vector3(-2,2,10*(0.5 + 0.5*Math.sin(t))),
+            new THREE.Vector3(2,2,10*(0.5 + 0.5*Math.sin(t))),
+            new THREE.Vector3(2,-2,0),
+        ], depth1))
+        //@ts-ignore
+        h3.curve.material.dashOffset = -time/100
     }
 
-    if(time > 3000 && lattices[1].rotation.y < Math.PI) {
-        // lattices[1].geometry.rotateY(0.001)
-        lattices[1].geometry.rotateX(0.001)
-    }
+    water.position.z = 4.8*Math.sin(time/3)
+    camera.position.y = 2
+    camera.position.z = 15*Math.sin(time/3)
+    camera.position.x = 15*Math.cos(time/3)
+    camera.rotation.y = Math.PI/2 - time/3
 
-    // const latticeArr = lattices[0].geometry.getAttribute('position').array
-    // for(let i=0; i<latticeArr.length; i+=3) {
-        // transformPoint(latticeArr, i, 2, 4, time)
+    // camera.rotation.x = Math.PI/8*Math.cos(time/3)
+    cubeCamera.update( renderer, scene );
+    // scene.rotation.y = 0.2*Math.sin(time)
+    // scene.rotation.y = 0.2*time
+    axesHelper.rotation.x = time
+    for(let i=0; i<axes.length; i++) {
+        // axes[i].position
+        // axes[i].rotation.x += perlin.noise(time,i,0)/10
+        // axes[i].rotation.y += perlin.noise(time,i,0)
+        // axes[i].rotation.z += perlin.noise(time,i,0)
+        axes[i].rotation.x = time
+    }
+    // for(let i=0; i<grids.length; i++) {
+    //     grids[i].rotation.x += 0.2*perlin.noise(time,i,0)/10
+    //     grids[i].rotation.y += 0.2*perlin.noise(time,i,0)
+    //     grids[i].rotation.z += 0.2*perlin.noise(time,i,0)
     // }
-    // lattices[0].geometry.setAttribute('position', new THREE.BufferAttribute(latticeArr, 3))
-
-    moveCubePipe(lattices[0])
-    if(time > 3000 && time < 3010) {
-        changeVelocities()
-    }
-    if(time > 6000 && time < 6010) {
-        changeVelocities()
-    }if(time > 9000 && time < 9010) {
-        changeVelocities()
-    }
-    for(let i=0; i<cubePipes.length; i++) {
-        cubePipes[i].cube.rotateX(0.01)
-        cubePipes[i].cube.rotateY(0.03  )
-    }
-
-    //debug.innerText = 'Matrix\n' + cube.matrix.elements.toString().replace(/,/g, '\n')
-    if (time < 9000) {
-        camera.fov = 50 + 50*Math.sin(time/2000);
-    }
-    else {
-        camera.fov = 50 + 50*Math.sin(9/2 + (time-9000)/8000);
-    }
-    camera.updateProjectionMatrix()
-    stats.update()
+    gridHelper.rotation.y = time
+    renderer.render(scene, camera);
 }
 
-function render() {
-    camera.updateProjectionMatrix()
-    renderer.render(scene, camera)
-    
-}
-animate()
+renderer.setAnimationLoop(animate);
 
-///////////
-
-function makePath() {
-    const pointsPath = new THREE.CurvePath()
-    const firstLine = new THREE.CubicBezierCurve3(
-        new THREE.Vector3( -1, 1, 1 ),
-        new THREE.Vector3( -0.5, 1.5, 0 ),
-        new THREE.Vector3( 2.0, 1.5, 0 ),
-        new THREE.Vector3( -1, 0, 1 )
-    );
-    const secondLine = new THREE.LineCurve3(
-        new THREE.Vector3(-1, 0, 0 ),
-        new THREE.Vector3( -1, 1, 0 )
-      );
-      pointsPath.add(firstLine);
-      pointsPath.add(secondLine);
-
-      return pointsPath;
-}
-
-function makeLattice(n:number, size:number) {
-    const latticeGeo = new THREE.BufferGeometry;
-    const posArray:Float32Array = new Float32Array(3*n*n*n);
-    for(let i=0; i < n; i++) {
-        for(let j=0; j<n; j++) {
-            for(let k=0; k<n; k++) {
-                posArray[3*(n*n*i + n*j + k) + 0] = i - (n-1)/2;
-                posArray[3*(n*n*i + n*j + k) + 1] = j - (n-1)/2;
-                posArray[3*(n*n*i + n*j + k) + 2] = k - (n-1)/2;
-            }
-        }
-    }
-    latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
-    const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
-        size:size,
-        color: 0xffffff
-    
-    }))
-    scene.add(latticeMesh)
-    lattices.push(latticeMesh)
-
-}
-
-function makeSphere(r:number, col: THREE.ColorRepresentation) {
-    const geo = new THREE.SphereGeometry(r,20,20);
-    const mat = new THREE.MeshLambertMaterial(
-        {
-            color: col,
-            wireframe: true,
-        }
-    )
-    
-    const sphere = new THREE.Mesh(geo, mat)
-    spheres.push(sphere)
-    scene.add(sphere)
-    spheresData.push({
-        radius: r,
-        widthSegments: 6,
-        heightSegments: 6,
-        phiStart: 0,
-        phiLength: Math.PI * 2,
-        thetaStart: 0,
-        thetaLength: Math.PI,
-    })
-}
-
-function makeBox(w:number,h:number,d:number, col: THREE.ColorRepresentation) {
-    const geo = new THREE.BoxGeometry(w,h,d,5,5,5);
-    const mat = new THREE.MeshLambertMaterial(
-        {
-            color: col,
-            wireframe: false,
-        }
-    )
-    
-    const box = new THREE.Mesh(geo, mat)
-    boxes.push(box)
-    scene.add(box)
-}
-
-
-function makeRing(r1:number, r2:number, col: THREE.ColorRepresentation) {
-    const geo = new THREE.TorusGeometry(r1, r2, 90, 9);
-    const mat = new THREE.MeshLambertMaterial(
-        {
-            color: col,
-            wireframe: false
-        }
-    )
-
-    const ring = new THREE.Mesh(geo, mat)
-    rings.push(ring)
-    scene.add(ring)
-}
-
-function makeCubePipe(lattice:THREE.Points) {
-    const n = Math.floor(Math.cbrt(
-        lattice.geometry.getAttribute('position').array.length/3));
-
-    const pipeGeo = new THREE.BoxGeometry(3,3,3,5,5,5);
-    const pipeMat = new THREE.MeshLambertMaterial({
-        color: pallette[Math.floor(1 + Math.random()*6)],
-        wireframe: false
-    })
-    const cubePipe = new THREE.Mesh(pipeGeo, pipeMat)
-    const dir = Math.floor(8*Math.random())
-    cubePipes.push({
-        cube: cubePipe,
-        velocity: new THREE.Vector3(
-            0.08*Math.floor(Math.random() * 2),
-            0.08*Math.floor(Math.random() * 2),
-            0.08*Math.floor(Math.random() * 2)
-            )
-    })
-    scene.add(cubePipe)
-
-    cubePipe.position.set(
-        Math.ceil(n*Math.random()) - n/2,
-        Math.ceil(n*Math.random()) - n/2,
-        Math.ceil(n*Math.random()) - n/2
-    )
-}
-
-function moveCubePipe(lattice:THREE.Points) {
-    const n = Math.floor(Math.cbrt(
-        lattice.geometry.getAttribute('position').array.length/3));
-    for(let i=0; i<cubePipes.length; i++) {
-        cubePipes[i].cube.position.add(
-            cubePipes[i].velocity
-        )
-        if(isOutside(cubePipes[i].cube.position, n)) {
-            cubePipes[i].velocity.multiplyScalar(-1);
-        }
-    }
-}
-
-function changeVelocities() {
-    for(let i=0; i<cubePipes.length; i++) {
-        const dir = Math.floor(8*Math.random())
-        cubePipes[i].velocity = new THREE.Vector3(
-            0.08*Math.floor(Math.random() * 2),
-            0.08*Math.floor(Math.random() * 2),
-            0.08*Math.floor(Math.random() * 2)
-            )
-    }
-}
-
-function isOutside(pos: THREE.Vector3, n:number):boolean {
-    return pos.x > n/2 || 
-        pos.x < -n/2 || 
-        pos.y > n/2 || 
-        pos.y < -n/2 || 
-        pos.z > n/2 || 
-        pos.z < -n/2 
-}
-
-// function transformPoint(latticeArr:THREE.TypedArray, 
-//     i:number, 
-//     t1:number, 
-//     t2:number,
-//     time:number) {
-//         const curr = new THREE.Vector3(
-//             latticeArr[i],
-//             latticeArr[i+1],
-//             latticeArr[i+2]
-//         )
-//         const target = new THREE.Vector3(
-//             0,0,0
-//         )
-//         if (time > t1 && time < t2) {
-//             const t = (time-t1)/(t2-t1);
-            
-//             latticeArr[i] = latticeArr[i];
-//             latticeArr[i+1] = latticeArr[i+1];
-//             latticeArr[i+2] = latticeArr[i+2];
-//         }
-//     }
+window.addEventListener('resize', function() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
