@@ -1,17 +1,15 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import { Water } from 'three/examples/jsm/objects/Water2.js';
-import {AxesHelper, ColorRepresentation, CubeTexture, GridHelper, LineBasicMaterial} from "three";
-import {Hilbert} from "./hilbert";
+import {
+    AxesHelper, CubeCamera,
+    CubeTexture,
+    SpotLight,
+} from "three";
 import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise'
+import {FBXLoader} from "three/examples/jsm/loaders/FBXLoader";
 
-
-let material:LineBasicMaterial,sideLen=4, curves:Array<THREE.Line>=[],
-    depth=1, colors:Array<number>=[],
-    lines:Array<Array<THREE.Vector3>> = [],
-maxDepth=6,seedVertices=0
-
-let flowLine, flowText, nrmlText0, nrmlText1;
+let flowText, nrmlText0, nrmlText1;
 const perlin = new ImprovedNoise();
 /////////////////////////
 const renderer = new THREE.WebGLRenderer({antialias: true});
@@ -26,25 +24,29 @@ const camera = new THREE.PerspectiveCamera(
     0.1,
     1000
 );
+camera.position.set(0, 4, 10);
+
 const clock = new THREE.Clock();
-let ambientLight = new THREE.AmbientLight( 0xe7e7e7, 0.2 );
-scene.add( ambientLight );
+// let ambientLight = new THREE.AmbientLight( 0xe7e7e7, 0.2 );
+// scene.add( ambientLight );
 
-const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
-scene.add( directionalLight );
+// const directionalLight = new THREE.DirectionalLight( 0xffffff, 5 );
+// scene.add( directionalLight );
 
-const spotLight = new THREE.SpotLight( 0x0000ff );
-spotLight.position.set( 0, 10, 0 );
+const spotLights:Array<SpotLight> = [];
+for(let i=0; i<17; i++) {
+    const spotLight = new THREE.SpotLight( 0xffffff , 10, 0, Math.PI/4);
+    spotLight.position.set( 0, i*10/17, 2 );
+    scene.add(spotLight)
+    spotLights.push(spotLight);
+}
 
-scene.add( spotLight );
-
-
+// scene.add( spotLight );
 
 new OrbitControls(camera, renderer.domElement);
-camera.position.set(0, 0, 18);
 
 const gridHelper = new THREE.GridHelper(12, 12);
-gridHelper.rotateX(Math.PI/2)
+// gridHelper.rotateX(Math.PI/2)
 scene.add(gridHelper);
 const axesHelper = new THREE.AxesHelper(4);
 scene.add(axesHelper);
@@ -79,6 +81,30 @@ let glassRainbowText = loader.load('./glass-rainbow.jpg');
 let paperText = loader.load('./paper.png');
 let whitePaintText = loader.load('./white-paint.jpg');
 let cloudText = loader.load('./cloud.png');
+////////
+const fbxLoader:FBXLoader = new FBXLoader();
+function loadObj( path:string, name:string ):Promise<THREE.Group>{
+    return new Promise(function( resolve, reject ){
+        let progress = undefined;
+        fbxLoader.setPath( path );
+        fbxLoader.load( name, resolve, progress, reject );
+    });
+}
+let manGroup:THREE.Group = await loadObj("anims/", 'StandingClap.fbx')
+const manMesh:THREE.Mesh = manGroup.children[0] as THREE.Mesh;
+scene.add(manGroup)
+////////
+manGroup.scale.setScalar(0.03)
+    let anim = manGroup.animations;
+    let mixer = new THREE.AnimationMixer(manGroup);
+    const clip =anim[0];
+    const action = mixer.clipAction(clip);
+    action.enabled = true;
+    // action.time = 0.0;
+    action.play()
+
+
+/////////////
 // gui = new GUI();
 let cubeTexture:CubeTexture = new THREE.CubeTextureLoader().load([
     'paperSquare.png',
@@ -92,37 +118,6 @@ let cubeTexture:CubeTexture = new THREE.CubeTextureLoader().load([
 cubeTexture.anisotropy = 0.1
 scene.background = cubeTexture
 
-///////////////////////////////
-
-
-// let h3 = new Hilbert([
-//     new THREE.Vector3(-2,-2,0),
-//     new THREE.Vector3(-2,2,0),
-//     new THREE.Vector3(2,2,0),
-//     new THREE.Vector3(2,-2,0),
-// ], 2);
-// let h4 = new Hilbert([
-//     new THREE.Vector3(-2,-2,0),
-//     new THREE.Vector3(-2,2,0),
-//     new THREE.Vector3(2,2,0),
-//     new THREE.Vector3(2,-2,0),
-// ], 4);
-// scene.add(h3.curve)
-// scene.add(h4.curve)
-// console.log(h3.curve.geometry.getAttribute('position'))
-// console.log(h4.curve.geometry.getAttribute('position'))
-
-// for(let k=0; k<7; k++) {
-//     let currPoints:Array<THREE.Vector3> = hilbertTrans(h3.points, h4.points, k/10)
-//     let flowGeo = new THREE.BufferGeometry().setFromPoints( currPoints )
-//     let material:LineBasicMaterial = new THREE.LineBasicMaterial({
-//         vertexColors: true
-//     })
-//     flowLine = new THREE.Line(flowGeo, material)
-//     curves.push(flowLine)
-//     flowLine.position.z = 3 + k/20
-//     scene.add(flowLine)
-// }
 
 let waterGeometry = new THREE.PlaneGeometry( 80, 80 );
 let water = new Water( waterGeometry, {
@@ -149,151 +144,65 @@ let water2 = new Water( waterGeometry, {
     normalMap0: nrmlText0,
     normalMap1: nrmlText1
 } );
-// waterGeometry.computeVertexNormals();
+waterGeometry.computeVertexNormals();
 scene.add( water2 );
 
 water2.position.y = -0.1;
 water2.rotation.x = Math.PI *  0.5;
 
-let sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(3, 50, 50),
-    new THREE.MeshStandardMaterial({
-        envMap: cubeRenderTarget.texture,
-        // color: 'red',
-        roughness: 0,
-        metalness: 1,
-    })
-);
-// scene.add(sphere)
-sphere.position.z = -10
+// let sphere = new THREE.Mesh(
+//     new THREE.SphereGeometry(40, 50, 50),
+//     new THREE.MeshPhysicalMaterial({
+//         envMap: camera.,
+//         color: 0x11ffff,
+//         roughness: 0.2,
+//         metalness: 1,
+//     })
+// );
+// // scene.add(sphere)
+let mirrorSphereCamera : CubeCamera = new THREE.CubeCamera( 0.1, 5000, new THREE.WebGLCubeRenderTarget());
 
-function hilbertTrans(from:Array<THREE.Vector3>, to:Array<THREE.Vector3>, howMuch:number):Array<THREE.Vector3>{
-    let ret:Array<THREE.Vector3> = []
-    for(let i = 0; i < from.length; i++) {
-        ret.push(new THREE.Vector3(
-            from[i].x + (to[i].x - from[i].x)*howMuch,
-            from[i].y + (to[i].y - from[i].y)*howMuch,
-            from[i].z + (to[i].z - from[i].z)*howMuch,
-        ))
-    }
-    return ret;
-}
+scene.add( mirrorSphereCamera );
+let sphereGeom = new THREE.SphereGeometry(2, 50, 50);
+var mirrorSphereMaterial = new THREE.MeshPhysicalMaterial( {
+    envMap: mirrorSphereCamera.renderTarget.texture ,
+    color: 0x11ffff,
+    roughness: 0.2,
+    metalness: 1,
 
-let basicSeed = [
-    new THREE.Vector3(-2,-2,0),
-    new THREE.Vector3(-2,2,0),
-    new THREE.Vector3(2,2,0),
-    new THREE.Vector3(2,-2,0),
-]
-let h3 = new Hilbert(basicSeed, 2);
-scene.add(h3.curve);
-h3.texture = cloudText;
+} );
+let mirrorSphere = new THREE.Mesh( sphereGeom, mirrorSphereMaterial );
+// mirrorSphere.position.set(75,50,0);
+mirrorSphereCamera.position.set(mirrorSphere.position.x,mirrorSphere.position.y,mirrorSphere.position.z);
+scene.add(mirrorSphere);
+mirrorSphere.position.z = 10
+mirrorSphere.position.y = 4
+mirrorSphere.position.x = 0
 
-let h4 = new Hilbert(basicSeed, 0);
-h4.update(basicSeed, 4)
-h4.texture = cloudText;
-
-let h5 = new Hilbert(basicSeed, 2);
-h5.update(basicSeed, 4)
-h5.texture = cloudText;
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
-
-
-    // camera.position.y = 2*Math.sin(2*time)
-    let noize1 = perlin.noise(2*time,1,0)
-    let startTime:number = 1
-
-    if(time - startTime > 0 ) {
-        // h3.curve.geometry.dispose();
-        scene.remove(h3.curve)
-        let t = time - startTime
-        // let depth1 = 5
-        // let depth = (1 + noize/1.333)
-        let depth1 = (1 + noize1/1.333) + (4*Math.sin(t/3.5 - 3 ) / (t/3.5 - 3))
-        // let depth = Math.min(2 + 3*Math.sin(t/4)*Math.sin(t), 6);
-        let t2 = t*3
-        scene.add(h3.update([
-            new THREE.Vector3(-2 + 2* Math.sin(t2 - Math.PI) ,
-                -2,
-                0),
-            new THREE.Vector3(-2  ,
-                THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI), 2, 4) ,
-                0),
-            new THREE.Vector3(2  ,
-                THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI),2,4) ,
-                0),
-            new THREE.Vector3(2+ 2*Math.sin(t2 - Math.PI) ,
-                -2,
-                0),
-        ], depth1))
-        //@ts-ignore
-        h3.curve.material.dashOffset = -time/100
-        //@ts-ignore
-        h3.curve.material.dashRatio = 0.5 + 0.2*Math.sin(time)
-    }
-
-    if (time/3 > (3/2)*Math.PI) {
-        let t = time/3 - (3/2)*Math.PI
-        scene.remove(h4.curve)
-        scene.add(h4.makeLine(h4.points))
-        h4.curve.translateX(6*Math.cos(t + 3*Math.PI/4))
-        h4.curve.translateY(6*Math.sin(t + 3*Math.PI/4))
-        h4.curve.rotateZ(t)
-        // scene.add(h4.curve)
-
-        scene.remove(h5.curve)
-        scene.add(h5.makeLine(h5.points))
-        h5.curve.position.set(
-            6*Math.cos(t - 1*Math.PI/4),
-            6*Math.sin(t - 1*Math.PI/4),
-            0);
-        // h5Curve.translateX(6*Math.cos(t - 1*Math.PI/4))
-        // h5Curve.translateY(6*Math.sin(t - 1*Math.PI/4))
-        h5.curve.rotateZ(t)
-        // scene.add(h5.curve)
-
-        h3.curve.rotateY(-t)
-        //@ts-ignore
-        h3.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
-        //@ts-ignore
-        h3.curve.material.lineWidth = 0.2 + 0.2*THREE.MathUtils.clamp(Math.sin(time-2),0,1)
-        //@ts-ignore
-        h4.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
-        //@ts-ignore
-        h5.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
-
-
-        camera.position.z = Math.sin(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
-        camera.position.x = Math.cos(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
-        camera.lookAt(new THREE.Vector3(0,0,0))
-
-        scene.remove(gridHelper)
-    }
-    else {
-        camera.position.z = 18*Math.sin(time/3)
-        camera.position.x = 18*Math.cos(time/3)
-        camera.lookAt(new THREE.Vector3(0,0,0))
-    }
-
-    // water.position.z = 4.8*Math.sin(time/3)
-    // camera.position.z = 12
-
-    // camera.rotation.x = Math.PI/8*Math.cos(time/3)
+    scene.rotateY(0.006)
+    camera.lookAt(new THREE.Vector3(0,3,0))
     cubeCamera.update( renderer, scene );
-    // scene.rotation.y = 0.2*Math.sin(time)
-    // scene.rotation.y = 0.2*time
-    axesHelper.rotation.x = time
-    for(let i=0; i<axes.length; i++) {
-        // axes[i].position
-        axes[i].rotation.x += perlin.noise(time,i,0)/10
-        axes[i].rotation.y += perlin.noise(time,i,0)
-        axes[i].rotation.z += perlin.noise(time,i,0)
-        axes[i].rotation.x = time
-    }
-    gridHelper.rotation.y = time
     renderer.render(scene, camera);
+
+    for(let i=0; i<spotLights.length; i++) {
+        // spotLights[i].position.set(2*Math.cos(4*time + i/3),4*Math.sin(time), 2*Math.sin(4*time + i/3))
+        // spotLights[i].lookAt(new THREE.Vector3(0,0,0))
+        spotLights[i].position.z = 2*Math.sin(4*time + i/3)
+        spotLights[i].position.x = 2*Math.cos(4*time + i/3)
+    }
+    mixer.update(1/100)
+    // mirrorSphere.position.set(10*Math.sin(time/2), 4, 10*Math.cos(time/2))
+
+    mirrorSphere.visible = false;
+    mirrorSphereCamera.update(renderer, scene);
+    mirrorSphere.visible = true;
+
+    if(time > 5) {
+
+    }
 }
 
 renderer.setAnimationLoop(animate);
