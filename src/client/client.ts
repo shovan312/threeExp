@@ -4,15 +4,17 @@ import { Water } from 'three/examples/jsm/objects/Water2.js';
 import {
     AxesHelper, CubeCamera,
     CubeTexture,
-    SpotLight,
+    SpotLight, WebGLCubeRenderTarget,
 } from "three";
 import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise'
 import {FBXLoader} from "three/examples/jsm/loaders/FBXLoader";
+import { Reflector } from 'three/examples/jsm/objects/Reflector'
 
 let flowText, nrmlText0, nrmlText1;
 const perlin = new ImprovedNoise();
 /////////////////////////
 const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.outputColorSpace = "srgb";
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 renderer.setClearColor(0x515151);
@@ -24,7 +26,7 @@ const camera = new THREE.PerspectiveCamera(
     0.1,
     1000
 );
-camera.position.set(0, 4, 10);
+camera.position.set(0, 14, 27);
 
 const clock = new THREE.Clock();
 // let ambientLight = new THREE.AmbientLight( 0xe7e7e7, 0.2 );
@@ -34,11 +36,19 @@ const clock = new THREE.Clock();
 // scene.add( directionalLight );
 
 const spotLights:Array<SpotLight> = [];
-for(let i=0; i<17; i++) {
-    const spotLight = new THREE.SpotLight( 0xffffff , 10, 0, Math.PI/4);
-    spotLight.position.set( 0, i*10/17, 2 );
+let nLights = 10
+for(let i=0; i<nLights; i++) {
+    const spotLight = new THREE.SpotLight( 0xffffff , 10, 0, Math.PI/6);
+    // spotLight.position.set( 2*Math.sin(2*Math.PI*i/nLights), i*10/nLights, 2*Math.cos(2*Math.PI*i/nLights) );
+    spotLight.position.set( 2*Math.sin(2*Math.PI*i/nLights), 7, 2*Math.cos(2*Math.PI*i/nLights) );
+    // spotLight.lookAt(new THREE.Vector3(0,2,120))
+
     scene.add(spotLight)
     spotLights.push(spotLight);
+
+    let sLHelper = new THREE.SpotLightHelper(spotLight);
+    // scene.add(sLHelper);
+
 }
 
 // scene.add( spotLight );
@@ -49,7 +59,7 @@ const gridHelper = new THREE.GridHelper(12, 12);
 // gridHelper.rotateX(Math.PI/2)
 scene.add(gridHelper);
 const axesHelper = new THREE.AxesHelper(4);
-scene.add(axesHelper);
+// scene.add(axesHelper);
 
 let axes:Array<AxesHelper> = []
 for(let i=0; i<3; i++) {
@@ -93,6 +103,7 @@ function loadObj( path:string, name:string ):Promise<THREE.Group>{
 let manGroup:THREE.Group = await loadObj("anims/", 'StandingClap.fbx')
 const manMesh:THREE.Mesh = manGroup.children[0] as THREE.Mesh;
 scene.add(manGroup)
+
 ////////
 manGroup.scale.setScalar(0.03)
     let anim = manGroup.animations;
@@ -102,6 +113,8 @@ manGroup.scale.setScalar(0.03)
     action.enabled = true;
     // action.time = 0.0;
     action.play()
+manGroup.position.z = -1
+console.log(manMesh)
 
 
 /////////////
@@ -150,59 +163,170 @@ scene.add( water2 );
 water2.position.y = -0.1;
 water2.rotation.x = Math.PI *  0.5;
 
-// let sphere = new THREE.Mesh(
-//     new THREE.SphereGeometry(40, 50, 50),
-//     new THREE.MeshPhysicalMaterial({
-//         envMap: camera.,
-//         color: 0x11ffff,
-//         roughness: 0.2,
-//         metalness: 1,
-//     })
-// );
-// // scene.add(sphere)
-let mirrorSphereCamera : CubeCamera = new THREE.CubeCamera( 0.1, 5000, new THREE.WebGLCubeRenderTarget());
+let sphereGeo:THREE.BufferGeometry = new THREE.SphereGeometry(1.8, 50, 50)
+let sphere = new THREE.Mesh(sphereGeo, new THREE.MeshStandardMaterial({
+    color: 0x00aaee,
+    roughness: 0.3,
+    metalness: 0.5
+}))
+sphere.position.z = -1
+sphere.scale.set(0.8, 0.8, 0.8);
 
-scene.add( mirrorSphereCamera );
-let sphereGeom = new THREE.SphereGeometry(2, 50, 50);
-var mirrorSphereMaterial = new THREE.MeshPhysicalMaterial( {
-    envMap: mirrorSphereCamera.renderTarget.texture ,
-    color: 0x11ffff,
-    roughness: 0.2,
-    metalness: 1,
+scene.add(sphere)
 
-} );
-let mirrorSphere = new THREE.Mesh( sphereGeom, mirrorSphereMaterial );
-// mirrorSphere.position.set(75,50,0);
-mirrorSphereCamera.position.set(mirrorSphere.position.x,mirrorSphere.position.y,mirrorSphere.position.z);
-scene.add(mirrorSphere);
-mirrorSphere.position.z = 10
-mirrorSphere.position.y = 4
-mirrorSphere.position.x = 0
 
+let planeGeo:THREE.BufferGeometry = new THREE.PlaneGeometry(6, 6)
+
+let mirrors:Array<Reflector> = [];
+let numMirror = 3
+for(let i=0; i<numMirror; i++) {
+    const mirror: Reflector = new Reflector(
+        planeGeo,
+        {
+            color: new THREE.Color(0xffffff),
+            // textureWidth: window.innerWidth * window.devicePixelRatio/3,
+            // textureHeight: window.innerHeight * window.devicePixelRatio/3
+        }
+    )
+    const mirrorBack:THREE.Mesh = new THREE.Mesh(planeGeo,
+        new THREE.MeshStandardMaterial({color:0xffffff, side: THREE.DoubleSide}))
+    mirror.position.x = 5*Math.cos(2*i*Math.PI/numMirror)
+    mirror.position.z = 5*Math.sin(2*i*Math.PI/numMirror)
+    mirror.position.y = 5
+    mirror.rotateY(-2*i*Math.PI/numMirror - Math.PI/2)
+    mirror.rotateX(Math.PI/12)
+    scene.add(mirror)
+    mirrors.push(mirror)
+
+    mirror.add(mirrorBack)
+    mirrorBack.position.z = -0.1
+
+    let mirrorLight = new THREE.SpotLight(0xffffff, 10);
+    mirrorLight.position.z = -3
+    mirrorLight.position.y = 3
+    mirrorBack.add(mirrorLight)
+}
+
+//////////
+const targetPlaneSize = {width:4, height:4}
+// const targetPlanePosition = {x:0, y: 10 , z: 5}
+const targetPlanePosition = {x:mirrors[1].position.x, y: mirrors[1].position.y , z: mirrors[1].position.z + 0.7}
+const renderTargetWidth = targetPlaneSize.width * 512;
+const renderTargetHeight = targetPlaneSize.height * 512;
+const renderTarget = new THREE.WebGLRenderTarget(renderTargetWidth, renderTargetHeight);
+
+const secondaryAspect = renderTargetWidth/renderTargetHeight;
+const secondaryCamera = new THREE.PerspectiveCamera(45, secondaryAspect, 0.1, 1000);
+secondaryCamera.position.set(targetPlanePosition.x, targetPlanePosition.y + 4, targetPlanePosition.z);
+secondaryCamera.lookAt(0,0,0)
+
+const secondaryScene = new THREE.Scene();
+secondaryScene.background = new THREE.Color(0x11111ee)
+
+const targetMaterial = new THREE.MeshPhongMaterial({
+    map: renderTarget.texture,
+    color: 0xffffff
+})
+const targetPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(targetPlaneSize.width, targetPlaneSize.height, 32),
+    targetMaterial
+)
+targetPlane.position.set(targetPlanePosition.x, targetPlanePosition.y, targetPlanePosition.z )
+targetPlane.position.x = 5*Math.cos(2*1*Math.PI/numMirror)
+targetPlane.position.z = 5*Math.sin(2*1*Math.PI/numMirror)
+targetPlane.position.y = 5
+targetPlane.rotateY(-2*1*Math.PI/numMirror - Math.PI/2)
+targetPlane.rotateX(Math.PI/12)
+
+// scene.add(targetPlane)
+
+let targetLight = new THREE.SpotLight(0xffffff, 10)
+targetLight.position.x = 5*Math.cos(2*1*Math.PI/numMirror)
+targetLight.position.z = 5*Math.sin(2*1*Math.PI/numMirror)
+targetLight.position.y = 5
+let tLHelper = new THREE.SpotLightHelper(targetLight);
+// scene.add(tLHelper)
+// scene.add(targetLight)
+
+
+document.addEventListener('keydown', (e) => keyPressed(e));
+function keyPressed(e:KeyboardEvent) {
+    if(e.code === "KeyW") {
+        wPressed = true
+    }
+    if(e.code === "KeyS") {
+        sPressed = true
+    }
+    if(e.code === "KeyD") {
+        dPressed = true
+    }
+}
+let wPressed:boolean = false;
+let sPressed:boolean = false;
+let dPressed:boolean = false
+/////////
+
+console.log(scene.background)
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
-    scene.rotateY(0.006)
+    scene.rotateY(0.06)
+
+    camera.updateProjectionMatrix()
     camera.lookAt(new THREE.Vector3(0,3,0))
-    cubeCamera.update( renderer, scene );
+
+    // targetPlane.material.map = renderTarget.texture
+    // renderer.setRenderTarget(renderTarget);
+    // renderer.render(secondaryScene, secondaryCamera);
+    // renderer.setRenderTarget(null);
     renderer.render(scene, camera);
 
-    for(let i=0; i<spotLights.length; i++) {
-        // spotLights[i].position.set(2*Math.cos(4*time + i/3),4*Math.sin(time), 2*Math.sin(4*time + i/3))
-        // spotLights[i].lookAt(new THREE.Vector3(0,0,0))
-        spotLights[i].position.z = 2*Math.sin(4*time + i/3)
-        spotLights[i].position.x = 2*Math.cos(4*time + i/3)
-    }
-    mixer.update(1/100)
+    // for(let i=0; i<spotLights.length; i++) {
+    //     spotLights[i].position.set(2*Math.cos(4*time + i/3),4*Math.sin(time), 2*Math.sin(4*time + i/3))
+    //     spotLights[i].lookAt(new THREE.Vector3(0,0,0))
+    //     spotLights[i].position.z = 2*Math.sin(4*time + i/3)
+    //     spotLights[i].position.x = 2*Math.cos(4*time + i/3)
+    // }
+
+    mixer.update(1/80)
     // mirrorSphere.position.set(10*Math.sin(time/2), 4, 10*Math.cos(time/2))
 
-    mirrorSphere.visible = false;
-    mirrorSphereCamera.update(renderer, scene);
-    mirrorSphere.visible = true;
+    if(wPressed) {
+        scene.rotateY(-0.18)
+        mirrors.forEach(mirror => {
+            //@ts-ignore
+            mirror.material.uniforms.color.value.r = 1 - Math.random()/4;
+            //@ts-ignore
+            mirror.material.uniforms.color.value.g = Math.random()/6;
+            //@ts-ignore
+            mirror.material.uniforms.color.value.b = Math.random()/4;
+        })
+    }
 
-    if(time > 5) {
+    if (sPressed ) {
+        // && Math.abs(scene.rotation.y - Math.PI/2) < 0.1) {
+
+        scene.rotateY(0.18 - 0.06 + 0.002)
+        // scene.remove(mirrors[1])
+        // scene.add(targetPlane)
+        // scene.add(targetLight)
+        mirrors.forEach(mirror => {
+            //@ts-ignore
+            mirror.material.uniforms.color.value.r = 0;
+            //@ts-ignore
+            mirror.material.uniforms.color.value.g = 0;
+            //@ts-ignore
+            mirror.material.uniforms.color.value.b = 0;
+        })
 
     }
+
+    if (time > 8) {
+        axes.forEach(axis => axis.rotation.set(time/7, time/7, time/7))
+    }
+    if (camera.position.y < 0) camera.position.y = 0.1
+    // console.log(camera.position.z)
+    if (camera.position.z < 6) camera.position.z = 6
 }
 
 renderer.setAnimationLoop(animate);
