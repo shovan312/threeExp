@@ -33,7 +33,7 @@ export function loadMidi( path:string):Promise<Midi>{
 document.body.appendChild(stats.dom)
 // scene.add(new THREE.AxesHelper(10))
 
-function getCamera(type:string) {
+function getCamera(type:string): THREE.PerspectiveCamera | THREE.OrthographicCamera{
     let camera;
     if (type.includes("pers")) {
         camera = new THREE.PerspectiveCamera(
@@ -57,20 +57,38 @@ function getCamera(type:string) {
 }
 
 function getLights():Array<THREE.Light>{
-    const pointLight1 = new THREE.PointLight(0xff0055, 10);
-    const pointLight2 = new THREE.PointLight(0x5500ff, 10);
-    pointLight1.position.x = 5
-    pointLight2.position.x = -5
-    scene.add(pointLight1)
-    scene.add(pointLight2)
+    const pointLight1 = new THREE.PointLight(0x1aaffff, 100);
+    const pointLight2 = new THREE.PointLight(0x1aaffff, 100);
+    pointLight1.position.z = 15
+    pointLight2.position.z = -15
+    // scene.add(pointLight1)
+    // scene.add(pointLight2)
 
-    return [pointLight1, pointLight2];
+    const pointLights:Array<THREE.Light> = []
+    for(let i=0; i<10;i++) {
+        const pointLight = new THREE.SpotLight(0xffffff, 1000, 0, Math.PI/4, 0.5);
+        pointLight.castShadow = true
+        scene.add(pointLight)
+        pointLight.shadow.bias = -0.003
+        pointLight.shadow.mapSize.width = 2048
+        pointLight.shadow.mapSize.height = 2048
+        pointLight.shadow.camera.near = 0.1
+        pointLight.shadow.camera.far = 100
+        pointLights.push(pointLight)
+
+        let plHelper = new THREE.SpotLightHelper(pointLight)
+        scene.add(plHelper)
+    }
+
+    return [pointLight1, pointLight2, ...pointLights];
 }
 
 
 
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.setClearColor(0x000000, 0.0);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.appendChild(renderer.domElement)
 
 

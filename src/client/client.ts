@@ -6,21 +6,69 @@ import {wave, burn, morph} from './transformations';
 import * as Tone from 'tone';
 import {Header, Midi} from "@tonejs/midi";
 import {TimeSignatureEvent} from "@tonejs/midi/dist/Header";
+import {TypedArray} from "three";
 
 new OrbitControls(camera, renderer.domElement)
 /////
 
-// const sphereGeometry = new THREE.BoxGeometry(10,10,10,10,10,10)
+const sphereGeometry = new THREE.BoxGeometry(5,200,5,10,10,10)
 let spheres:Array<THREE.Mesh> = []
-const sphereGeometry = new THREE.SphereGeometry(10)
-const material = new THREE.MeshBasicMaterial({
-    color: 0x0000ff,
-    wireframe: true,
-    // reflectivity: 1
+// const sphereGeometry = new THREE.SphereGeometry(10, 6, 9);
+// const sphereGeometry = new THREE.PlaneGeometry(10, 14, 22, 22)
+// const sphereGeometry = new THREE.TorusGeometry(20, 4, 22)
+// const sphereGeometry = new THREE.CylinderGeometry(5, 5, 200, 20, 20)
+const material = new THREE.MeshStandardMaterial({
+    color: 0xff0000
 })
+
 const sphere = new THREE.Mesh(sphereGeometry, material)
+sphere.receiveShadow = true;
+sphere.castShadow = true;
 scene.add(sphere)
 spheres.push(sphere)
+
+let sphereNormalArr:TypedArray = sphere.geometry.getAttribute('normal').array;
+let spherePosArr:TypedArray = sphere.geometry.getAttribute('position').array;
+
+for(let i=0; i<sphereNormalArr.length; i+=3) {
+    let currNormal = new THREE.Vector3(sphereNormalArr[i], sphereNormalArr[i+1], sphereNormalArr[i+2])
+    let currPos = new THREE.Vector3(spherePosArr[i], spherePosArr[i+1], spherePosArr[i+2])
+
+    let rodGeo = new THREE.CylinderGeometry(0.1, 0.1, 4)
+    let rodMat = new THREE.MeshStandardMaterial({
+        color: 0x0000ff,
+        // wireframe: true,
+        // reflectivity: 1,
+    })
+    let rod = new THREE.Mesh(rodGeo, rodMat)
+    rod.position.set(currPos.x, currPos.y, currPos.z)
+    rod.castShadow = true
+    rod.receiveShadow = true
+
+    scene.add(new THREE.ArrowHelper(currNormal, currPos, 2, 0xff0000))
+    let up = new THREE.Vector3(0, 1, 0);
+    rod.quaternion.setFromUnitVectors(up, currNormal)
+    scene.add(rod)
+}
+
+console.log(sphere.geometry)
+
+
+//
+// const planeGeometry = new THREE.PlaneGeometry(1, 1, 1, 1)
+const planeGeometry = new THREE.CylinderGeometry(1, 1, 10)
+const planeMaterial = material.clone();
+// planeMaterial.wireframe = true
+const plane = new THREE.Mesh(planeGeometry, planeMaterial)
+plane.geometry.rotateX(-Math.PI/2)
+plane.position.y = -5
+plane.castShadow = true
+plane.receiveShadow = true
+// scene.add(plane)
+// scene.add(new THREE.AxesHelper())
+// console.log(planeGeometry.getAttribute('normals'))
+// console.log(planeGeometry.getAttribute('position'))
+// console.log(planeGeometry.getAttribute('uv'))
 /////
 
 type sphereData = {
@@ -72,7 +120,7 @@ let midiJson:Midi = await loadMidi('./midi/twinkle_twinkle.mid');
 twoX(midiJson);
 let mH:Header = midiJson.header
 let ppq = mH.ppq
-console.log(ppq)
+// console.log(ppq)
 let timeSignatures:TimeSignatureEvent[] = mH.timeSignatures
 let tempo:number = mH.tempos.length > 0 ? mH.tempos[0].bpm : 120
 let ts:number = timeSignatures.length > 0 ? timeSignatures[0].timeSignature[0] : 4
@@ -84,7 +132,7 @@ let ret = getLimits(midiJson)
 
 let lowestNote = ret[0]
 let highestNote = ret[1]
-console.log(midiJson)
+// console.log(midiJson)
 
 // let numCells = highestNote - lowestNote + 5
 
@@ -129,20 +177,46 @@ const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
     vertexColors: true
 }))
 latticeGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-scene.add(latticeMesh)
+// scene.add(latticeMesh)
 
 
 
+const pointLights:Array<THREE.SpotLight> = lights.slice(2, lights.length).map(light => light as THREE.SpotLight)
+for(let i=0; i<pointLights.length; i++) {
+    let theta = 2*i*Math.PI/pointLights.length + Math.PI/20
+    pointLights[i].position.set(6*Math.cos(theta), 10, 6*Math.sin(theta) )
+}
+console.log(pointLights[0].position)
+console.log(pointLights[1].position)
 function animate() {
     requestAnimationFrame(animate)
     // scene.rotateX(-0.001)
-    scene.rotateY(0.003)
+    // scene.rotateY(0.003)
     time = clock.getElapsedTime()
 
-    lights[0].position.x = -10 +5*Math.sin(5*time)
-    lights[0].position.z = 5*Math.cos(5*time)
-    lights[1].position.x = 10 + 5*Math.sin(5*time)
-    lights[1].position.z = 5*Math.cos(5*time)
+    // lights[0].position.x = -10 +5*Math.sin(5*time)
+    // lights[0].position.z = 5*Math.cos(5*time)
+    // lights[1].position.x = 10 + 5*Math.sin(5*time)
+    // lights[1].position.z = 5*Math.cos(5*time)
+
+    // camera.position.set(pointLights[0].position.x, pointLights[0].position.y - 10, pointLights[0].position.z)
+    // camera.up.set(0,-1,0)
+
+
+
+    pointLights.forEach(mainLight => {
+        // mainLight.position.x = 10*Math.cos(time/5)
+        mainLight.position.y = 70 -3*time
+        // const dir = new THREE.Vector3(1000*Math.cos(time/5 + Math.PI/2),1000*Math.sin(time/5 + Math.PI/2),0).add(mainLight.position);
+        // mainLight.target.position.set(dir.x, dir.y, dir.z);
+
+        mainLight.target.position.set(mainLight.position.x, mainLight.position.y - 100, mainLight.position.z)
+        mainLight.target.updateMatrixWorld();
+    })
+    // camera.lookAt(mainLight.position)
+    //
+
+
 
 
     let trackCursors = []
@@ -156,9 +230,9 @@ function animate() {
         for(let j in notes) {
             if (time*100 > mpt*notes[j].ticks && time*100 < mpt*(notes[j].ticks + notes[j].durationTicks)) {
                 // text(notes[j].name, w/2, h/2 - 200 + i*100)
-                console.log(notes[j].midi)
-                spheresData[0].radius = notes[j].midi
-                regenerateSphereGeometry(0)
+                // console.log(notes[j].midi)
+                // spheresData[0].radius = notes[j].midi/5
+                // regenerateSphereGeometry(0)
 
                 // b[notes[j].midi - lowestNote].move()
                 // b[notes[j].midi - lowestNote].show()
