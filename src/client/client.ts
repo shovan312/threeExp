@@ -135,7 +135,7 @@ let water = new Water( waterGeometry, {
     normalMap1: nrmlText1
 } );
 waterGeometry.computeVertexNormals();
-scene.add( water );
+// scene.add( water );
 
 water.position.y = -0;
 water.rotation.x = Math.PI * - 0.5;
@@ -150,7 +150,7 @@ let water2 = new Water( waterGeometry, {
     normalMap1: nrmlText1
 } );
 // waterGeometry.computeVertexNormals();
-scene.add( water2 );
+// scene.add( water2 );
 
 water2.position.y = -0.1;
 water2.rotation.x = Math.PI *  0.5;
@@ -197,6 +197,26 @@ let h5 = new Hilbert(basicSeed, 2);
 h5.update(basicSeed, 4)
 h5.texture = cloudText;
 
+
+const glassMaterial = new THREE.MeshPhysicalMaterial({
+} as THREE.MeshPhysicalMaterialParameters);
+glassMaterial.color = new THREE.Color( 0xffffff );
+glassMaterial.clearcoat = 0.8;
+glassMaterial.ior = 1.15;
+glassMaterial.specularIntensity = 0.6;
+glassMaterial.roughness = 0.0;
+glassMaterial.thickness = 0.5;
+glassMaterial.transmission = 0.08;
+glassMaterial.sheen = 0.0;
+glassMaterial.sheenColor = new THREE.Color( 0xffffff );
+
+sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), glassMaterial);
+sphere.position.z = 2;
+sphere.position.x = 2;
+sphere.position.y = 3;
+sphere.castShadow = true;
+scene.add(sphere);
+
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
@@ -205,85 +225,79 @@ function animate() {
     let noize1 = perlin.noise(2*time,1,0)
     let startTime:number = 1
 
-    if(time - startTime > 0 ) {
-        // h3.curve.geometry.dispose();
-        scene.remove(h3.curve)
-        let t = time - startTime
-        // let depth1 = 5
-        // let depth = (1 + noize/1.333)
-        let depth1 = (1 + noize1/1.333) + (4*Math.sin(t/3.5 - 3 ) / (t/3.5 - 3))
-        // let depth = Math.min(2 + 3*Math.sin(t/4)*Math.sin(t), 6);
-        let t2 = t*3
-        scene.add(h3.update([
-            new THREE.Vector3(-2 + 2* Math.sin(t2 - Math.PI) ,
-                -2,
-                0),
-            new THREE.Vector3(-2  ,
-                THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI), 2, 4) ,
-                0),
-            new THREE.Vector3(2  ,
-                THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI),2,4) ,
-                0),
-            new THREE.Vector3(2+ 2*Math.sin(t2 - Math.PI) ,
-                -2,
-                0),
-        ], depth1))
-        //@ts-ignore
-        h3.curve.material.dashOffset = -time/100
-        //@ts-ignore
-        h3.curve.material.dashRatio = 0.5 + 0.2*Math.sin(time)
-    }
+    // if(time - startTime > 0 ) {
+    //     // h3.curve.geometry.dispose();
+    //     scene.remove(h3.curve)
+    //     let t = time - startTime
+    //     // let depth1 = 5
+    //     // let depth = (1 + noize/1.333)
+    //     let depth1 = (1 + noize1/1.333) + (4*Math.sin(t/3.5 - 3 ) / (t/3.5 - 3))
+    //     // let depth = Math.min(2 + 3*Math.sin(t/4)*Math.sin(t), 6);
+    //     let t2 = t*3
+    //     scene.add(h3.update([
+    //         new THREE.Vector3(-2 + 2* Math.sin(t2 - Math.PI) ,
+    //             -2,
+    //             0),
+    //         new THREE.Vector3(-2  ,
+    //             THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI), 2, 4) ,
+    //             0),
+    //         new THREE.Vector3(2  ,
+    //             THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI),2,4) ,
+    //             0),
+    //         new THREE.Vector3(2+ 2*Math.sin(t2 - Math.PI) ,
+    //             -2,
+    //             0),
+    //     ], depth1))
+    //     //@ts-ignore
+    //     h3.curve.material.dashOffset = -time/100
+    //     //@ts-ignore
+    //     h3.curve.material.dashRatio = 0.5 + 0.2*Math.sin(time)
+    // }
 
-    if (time/3 > (3/2)*Math.PI) {
-        let t = time/3 - (3/2)*Math.PI
-        scene.remove(h4.curve)
-        scene.add(h4.makeLine(h4.points))
-        h4.curve.translateX(6*Math.cos(t + 3*Math.PI/4))
-        h4.curve.translateY(6*Math.sin(t + 3*Math.PI/4))
-        h4.curve.rotateZ(t)
-        // scene.add(h4.curve)
+    // if (time/3 > (3/2)*Math.PI) {
+    //     let t = time/3 - (3/2)*Math.PI
+    //     scene.remove(h4.curve)
+    //     scene.add(h4.makeLine(h4.points))
+    //     h4.curve.translateX(6*Math.cos(t + 3*Math.PI/4))
+    //     h4.curve.translateY(6*Math.sin(t + 3*Math.PI/4))
+    //     h4.curve.rotateZ(t)
+    //     // scene.add(h4.curve)
 
-        scene.remove(h5.curve)
-        scene.add(h5.makeLine(h5.points))
-        h5.curve.position.set(
-            6*Math.cos(t - 1*Math.PI/4),
-            6*Math.sin(t - 1*Math.PI/4),
-            0);
-        // h5Curve.translateX(6*Math.cos(t - 1*Math.PI/4))
-        // h5Curve.translateY(6*Math.sin(t - 1*Math.PI/4))
-        h5.curve.rotateZ(t)
-        // scene.add(h5.curve)
+    //     scene.remove(h5.curve)
+    //     scene.add(h5.makeLine(h5.points))
+    //     h5.curve.position.set(
+    //         6*Math.cos(t - 1*Math.PI/4),
+    //         6*Math.sin(t - 1*Math.PI/4),
+    //         0);
+    //     // h5Curve.translateX(6*Math.cos(t - 1*Math.PI/4))
+    //     // h5Curve.translateY(6*Math.sin(t - 1*Math.PI/4))
+    //     h5.curve.rotateZ(t)
+    //     // scene.add(h5.curve)
 
-        h3.curve.rotateY(-t)
-        //@ts-ignore
-        h3.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
-        //@ts-ignore
-        h3.curve.material.lineWidth = 0.2 + 0.2*THREE.MathUtils.clamp(Math.sin(time-2),0,1)
-        //@ts-ignore
-        h4.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
-        //@ts-ignore
-        h5.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
+    //     h3.curve.rotateY(-t)
+    //     //@ts-ignore
+    //     h3.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
+    //     //@ts-ignore
+    //     h3.curve.material.lineWidth = 0.2 + 0.2*THREE.MathUtils.clamp(Math.sin(time-2),0,1)
+    //     //@ts-ignore
+    //     h4.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
+    //     //@ts-ignore
+    //     h5.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
 
 
-        camera.position.z = Math.sin(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
-        camera.position.x = Math.cos(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
-        camera.lookAt(new THREE.Vector3(0,0,0))
+    //     camera.position.z = Math.sin(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
+    //     camera.position.x = Math.cos(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
+    //     camera.lookAt(new THREE.Vector3(0,0,0))
 
-        scene.remove(gridHelper)
-    }
-    else {
-        camera.position.z = 18*Math.sin(time/3)
-        camera.position.x = 18*Math.cos(time/3)
-        camera.lookAt(new THREE.Vector3(0,0,0))
-    }
+    //     scene.remove(gridHelper)
+    // }
+    // else {
+    //     camera.position.z = 18*Math.sin(time/3)
+    //     camera.position.x = 18*Math.cos(time/3)
+    //     camera.lookAt(new THREE.Vector3(0,0,0))
+    // }
 
-    // water.position.z = 4.8*Math.sin(time/3)
-    // camera.position.z = 12
-
-    // camera.rotation.x = Math.PI/8*Math.cos(time/3)
     cubeCamera.update( renderer, scene );
-    // scene.rotation.y = 0.2*Math.sin(time)
-    // scene.rotation.y = 0.2*time
     axesHelper.rotation.x = time
     for(let i=0; i<axes.length; i++) {
         // axes[i].position
