@@ -46,7 +46,7 @@ export class Hilbert {
             }
             this.points = this.interpolatePoints(this.points);
         }
-        this.colors = this.getColors();
+        // this.colors = this.getColors();
         // ThreeJS Line
         // return this.makeCurve(this.points)
 
@@ -150,15 +150,15 @@ export class Hilbert {
         return this.curve;
     }
 
-    private getColors() {
-        let curveCol:Array<number> = [];
-        for(let i=0; i<10*this.points.length; i++) {
-            const color:ColorRepresentation = new THREE.Color();
-            color.setHSL( i / ( this.points.length ) * 0.3 + 0.5, 1.0, 0.5, THREE.SRGBColorSpace );
-            curveCol.push( color.r, color.g, color.b );
-        }
-        return curveCol
-    }
+    // private getColors() {
+    //     let curveCol:Array<number> = [];
+    //     for(let i=0; i<10*this.points.length; i++) {
+    //         const color:ColorRepresentation = new THREE.Color();
+    //         color.setHSL( i / ( this.points.length ) * 0.3 + 0.5, 1.0, 0.5, THREE.SRGBColorSpace );
+    //         curveCol.push( color.r, color.g, color.b );
+    //     }
+    //     return curveCol
+    // }
 
     public update(seed: Array<THREE.Vector3>, depth:number) {
 
