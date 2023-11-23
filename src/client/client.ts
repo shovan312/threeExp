@@ -3,8 +3,18 @@ import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import { Water } from 'three/examples/jsm/objects/Water2.js';
 import {AxesHelper, ColorRepresentation, CubeTexture, GridHelper, LineBasicMaterial} from "three";
 import {Hilbert} from "./hilbert";
+import {Line} from "./line";
 import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise'
+import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader';
+const MeshLine = require('three.meshline').MeshLine;
+const MeshLineMaterial = require('three.meshline').MeshLineMaterial;
+import {complex} from 'ts-complex-numbers';
 
+// P = sum(an*(e^int))
+type coefficients = Array<{
+    n: number,
+    an: complex
+}>
 
 let material:LineBasicMaterial,sideLen=4, curves:Array<THREE.Line>=[],
     depth=1, colors:Array<number>=[],
@@ -26,6 +36,8 @@ const camera = new THREE.PerspectiveCamera(
     0.1,
     1000
 );
+camera.position.set(0, 0, 38);
+
 const clock = new THREE.Clock();
 let ambientLight = new THREE.AmbientLight( 0xe7e7e7, 0.2 );
 scene.add( ambientLight );
@@ -38,10 +50,7 @@ spotLight.position.set( 0, 10, 0 );
 
 scene.add( spotLight );
 
-
-
 new OrbitControls(camera, renderer.domElement);
-camera.position.set(0, 0, 18);
 
 const gridHelper = new THREE.GridHelper(12, 12);
 gridHelper.rotateX(Math.PI/2)
@@ -92,37 +101,52 @@ let cubeTexture:CubeTexture = new THREE.CubeTextureLoader().load([
 cubeTexture.anisotropy = 0.1
 scene.background = cubeTexture
 
+const svgLoader = new SVGLoader();
+svgLoader.load(
+	// resource URL
+	'svg/shovan.svg',
+	// called when the resource is loaded
+	function ( data ) {
+
+		const paths = data.paths;
+        console.log(data)
+		const group = new THREE.Group();
+
+		for ( let i = 0; i < paths.length; i ++ ) {
+
+			const path = paths[ i ];
+
+            for(let i=0; i<path.subPaths[0].curves.length; i++) {
+                const curve1:THREE.Curve<THREE.Vector2> = path.subPaths[0].curves[i]
+                const pointsArr = curve1.getPoints(19);
+                let geometry = new THREE.BufferGeometry().setFromPoints(pointsArr);
+                
+                const svgLine = new Line(pointsArr.map(vec2 => new THREE.Vector3(vec2.x/10, vec2.y/10, 0)), glassRainbowText);
+                // scene.add(svgLine.curve)
+            }
+
+			const material = new THREE.MeshBasicMaterial( {
+				color: path.color,
+				side: THREE.DoubleSide,
+				depthWrite: false
+			} );
+
+			const shapes = SVGLoader.createShapes( path );
+
+			for ( let j = 0; j < shapes.length; j ++ ) {
+
+				const shape = shapes[ j ];
+				const geometry = new THREE.ShapeGeometry( shape );
+				const mesh = new THREE.Mesh( geometry, material );
+				group.add( mesh );
+
+			}
+		}
+		// scene.add( group );
+
+	}
+);
 ///////////////////////////////
-
-
-// let h3 = new Hilbert([
-//     new THREE.Vector3(-2,-2,0),
-//     new THREE.Vector3(-2,2,0),
-//     new THREE.Vector3(2,2,0),
-//     new THREE.Vector3(2,-2,0),
-// ], 2);
-// let h4 = new Hilbert([
-//     new THREE.Vector3(-2,-2,0),
-//     new THREE.Vector3(-2,2,0),
-//     new THREE.Vector3(2,2,0),
-//     new THREE.Vector3(2,-2,0),
-// ], 4);
-// scene.add(h3.curve)
-// scene.add(h4.curve)
-// console.log(h3.curve.geometry.getAttribute('position'))
-// console.log(h4.curve.geometry.getAttribute('position'))
-
-// for(let k=0; k<7; k++) {
-//     let currPoints:Array<THREE.Vector3> = hilbertTrans(h3.points, h4.points, k/10)
-//     let flowGeo = new THREE.BufferGeometry().setFromPoints( currPoints )
-//     let material:LineBasicMaterial = new THREE.LineBasicMaterial({
-//         vertexColors: true
-//     })
-//     flowLine = new THREE.Line(flowGeo, material)
-//     curves.push(flowLine)
-//     flowLine.position.z = 3 + k/20
-//     scene.add(flowLine)
-// }
 
 let waterGeometry = new THREE.PlaneGeometry( 80, 80 );
 let water = new Water( waterGeometry, {
@@ -167,37 +191,6 @@ let sphere = new THREE.Mesh(
 // scene.add(sphere)
 sphere.position.z = -10
 
-function hilbertTrans(from:Array<THREE.Vector3>, to:Array<THREE.Vector3>, howMuch:number):Array<THREE.Vector3>{
-    let ret:Array<THREE.Vector3> = []
-    for(let i = 0; i < from.length; i++) {
-        ret.push(new THREE.Vector3(
-            from[i].x + (to[i].x - from[i].x)*howMuch,
-            from[i].y + (to[i].y - from[i].y)*howMuch,
-            from[i].z + (to[i].z - from[i].z)*howMuch,
-        ))
-    }
-    return ret;
-}
-
-let basicSeed = [
-    new THREE.Vector3(-2,-2,0),
-    new THREE.Vector3(-2,2,0),
-    new THREE.Vector3(2,2,0),
-    new THREE.Vector3(2,-2,0),
-]
-let h3 = new Hilbert(basicSeed, 2);
-scene.add(h3.curve);
-h3.texture = cloudText;
-
-let h4 = new Hilbert(basicSeed, 0);
-h4.update(basicSeed, 4)
-h4.texture = cloudText;
-
-let h5 = new Hilbert(basicSeed, 2);
-h5.update(basicSeed, 4)
-h5.texture = cloudText;
-
-
 const glassMaterial = new THREE.MeshPhysicalMaterial({
 } as THREE.MeshPhysicalMaterialParameters);
 glassMaterial.color = new THREE.Color( 0xffffff );
@@ -211,92 +204,32 @@ glassMaterial.sheen = 0.0;
 glassMaterial.sheenColor = new THREE.Color( 0xffffff );
 
 sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), glassMaterial);
-sphere.position.z = 2;
-sphere.position.x = 2;
-sphere.position.y = 3;
+sphere.position.set(2,2,3)
 sphere.castShadow = true;
-scene.add(sphere);
+// scene.add(sphere);
+
+// const spiroCoeff:coefficients = [
+//     {n:3, an:new complex(8,0)},
+//     {n:-13, an:new complex(8/2,0)},
+//     {n:11, an:new complex(0, 8/3)},
+// ]
+
+const spiroCoeff:coefficients = [
+    {n:-7, an:new complex(-0.0827113100467,0)},
+    {n:-3, an:new complex(-0.4503171322,0)},
+    {n:1, an:new complex(-4.0528541922,0)},
+    {n:5, an:new complex(-0.16211416769,0)},
+    {n:9, an:new complex(-0.05003523694,0)},
+]
+
+const spiroPoints:Array<THREE.Vector3> = getSpiroPoints(spiroCoeff);
+const spiroLine = new Line(spiroPoints, glassRainbowText);
+scene.add(spiroLine.curve)
+
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
-
-
-    // camera.position.y = 2*Math.sin(2*time)
-    let noize1 = perlin.noise(2*time,1,0)
-    let startTime:number = 1
-
-    // if(time - startTime > 0 ) {
-    //     // h3.curve.geometry.dispose();
-    //     scene.remove(h3.curve)
-    //     let t = time - startTime
-    //     // let depth1 = 5
-    //     // let depth = (1 + noize/1.333)
-    //     let depth1 = (1 + noize1/1.333) + (4*Math.sin(t/3.5 - 3 ) / (t/3.5 - 3))
-    //     // let depth = Math.min(2 + 3*Math.sin(t/4)*Math.sin(t), 6);
-    //     let t2 = t*3
-    //     scene.add(h3.update([
-    //         new THREE.Vector3(-2 + 2* Math.sin(t2 - Math.PI) ,
-    //             -2,
-    //             0),
-    //         new THREE.Vector3(-2  ,
-    //             THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI), 2, 4) ,
-    //             0),
-    //         new THREE.Vector3(2  ,
-    //             THREE.MathUtils.clamp(2+ 4* Math.sin(t2 - Math.PI),2,4) ,
-    //             0),
-    //         new THREE.Vector3(2+ 2*Math.sin(t2 - Math.PI) ,
-    //             -2,
-    //             0),
-    //     ], depth1))
-    //     //@ts-ignore
-    //     h3.curve.material.dashOffset = -time/100
-    //     //@ts-ignore
-    //     h3.curve.material.dashRatio = 0.5 + 0.2*Math.sin(time)
-    // }
-
-    // if (time/3 > (3/2)*Math.PI) {
-    //     let t = time/3 - (3/2)*Math.PI
-    //     scene.remove(h4.curve)
-    //     scene.add(h4.makeLine(h4.points))
-    //     h4.curve.translateX(6*Math.cos(t + 3*Math.PI/4))
-    //     h4.curve.translateY(6*Math.sin(t + 3*Math.PI/4))
-    //     h4.curve.rotateZ(t)
-    //     // scene.add(h4.curve)
-
-    //     scene.remove(h5.curve)
-    //     scene.add(h5.makeLine(h5.points))
-    //     h5.curve.position.set(
-    //         6*Math.cos(t - 1*Math.PI/4),
-    //         6*Math.sin(t - 1*Math.PI/4),
-    //         0);
-    //     // h5Curve.translateX(6*Math.cos(t - 1*Math.PI/4))
-    //     // h5Curve.translateY(6*Math.sin(t - 1*Math.PI/4))
-    //     h5.curve.rotateZ(t)
-    //     // scene.add(h5.curve)
-
-    //     h3.curve.rotateY(-t)
-    //     //@ts-ignore
-    //     h3.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
-    //     //@ts-ignore
-    //     h3.curve.material.lineWidth = 0.2 + 0.2*THREE.MathUtils.clamp(Math.sin(time-2),0,1)
-    //     //@ts-ignore
-    //     h4.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
-    //     //@ts-ignore
-    //     h5.curve.material.dashRatio = 0.1 + 0.1*Math.sin(time)
-
-
-    //     camera.position.z = Math.sin(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
-    //     camera.position.x = Math.cos(time/3)*(18 - THREE.MathUtils.clamp(10*Math.sin(t), 0,8))
-    //     camera.lookAt(new THREE.Vector3(0,0,0))
-
-    //     scene.remove(gridHelper)
-    // }
-    // else {
-    //     camera.position.z = 18*Math.sin(time/3)
-    //     camera.position.x = 18*Math.cos(time/3)
-    //     camera.lookAt(new THREE.Vector3(0,0,0))
-    // }
-
+    
     cubeCamera.update( renderer, scene );
     axesHelper.rotation.x = time
     for(let i=0; i<axes.length; i++) {
@@ -307,6 +240,11 @@ function animate() {
         axes[i].rotation.x = time
     }
     gridHelper.rotation.y = time
+
+    // spiroLine.curve.rotateY(0.02)
+    //@ts-ignore
+    spiroLine.curve.material.dashOffset = time/100
+
     renderer.render(scene, camera);
 }
 
@@ -317,3 +255,23 @@ window.addEventListener('resize', function() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+function getSpiroPoints(coefficients:coefficients):Array<THREE.Vector3>{
+    let spiroPoints = []
+    let thetaStart = 0;
+    let thetaEnd = 2*Math.PI;
+    let thetaResolution = 500;
+
+    for(let i=0; i<=thetaResolution; i++) {
+        let r = new complex(0,0)
+        for(let j=0; j<coefficients.length; j++) {
+            const theta = thetaStart + i * (thetaEnd - thetaStart) / thetaResolution
+            const z = coefficients[j].an
+            
+            const I = new complex(0,1)
+            r = r.add(z.mult(I.scalarMult(coefficients[j].n).scalarMult(theta).exp()))
+        }
+        spiroPoints.push(new THREE.Vector3(r.real, r.img, 0))
+    }
+    return spiroPoints;
+}
