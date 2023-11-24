@@ -38,6 +38,14 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.set(0, 0, 38);
 
+// const camera = new THREE.OrthographicCamera(
+//     -1*window.innerWidth / window.innerHeight,1*window.innerWidth / window.innerHeight,1,-1,
+//     0.1,
+//     1000
+// );
+// camera.zoom = 0.06
+// camera.position.set(0, 0, 180);
+
 const clock = new THREE.Clock();
 let ambientLight = new THREE.AmbientLight( 0xe7e7e7, 0.2 );
 scene.add( ambientLight );
@@ -50,7 +58,7 @@ spotLight.position.set( 0, 10, 0 );
 
 scene.add( spotLight );
 
-new OrbitControls(camera, renderer.domElement);
+const orbitControls = new OrbitControls(camera, renderer.domElement);
 
 const gridHelper = new THREE.GridHelper(12, 12);
 gridHelper.rotateX(Math.PI/2)
@@ -109,7 +117,6 @@ svgLoader.load(
 	function ( data ) {
 
 		const paths = data.paths;
-        console.log(data)
 		const group = new THREE.Group();
 
 		for ( let i = 0; i < paths.length; i ++ ) {
@@ -209,9 +216,12 @@ sphere.castShadow = true;
 // scene.add(sphere);
 
 const spiroCoeff:coefficients = [
-    {n:3, an:new complex(8,0)},
-    {n:-13, an:new complex(8/2,0)},
-    {n:11, an:new complex(0, 8/3)},
+    {n:-5, an:new complex(10, 8/3)},
+    {n:1, an:new complex(-8,0)},
+    {n:7, an:new complex(8/2,0)},
+    {n:13, an:new complex(5/3, 2/3)},
+    {n:-29, an:new complex(0.8, 0)},
+    {n:49, an:new complex(0.1, 0.2)}
 ]
 
 // const spiroCoeff:coefficients = [
@@ -222,10 +232,37 @@ const spiroCoeff:coefficients = [
 //     {n:9, an:new complex(-0.05003523694,0)},
 // ]
 
+const wheels = makeSpiroWheels(spiroCoeff);
+scene.add(wheels[0])
+
 const spiroPoints:Array<THREE.Vector3> = getSpiroPoints(spiroCoeff);
 const spiroLine = new Line(spiroPoints, glassRainbowText);
-scene.add(spiroLine.curve)
+// scene.add(spiroLine.curve)
 
+
+
+document.addEventListener('keydown', (e) => keyPressed(e));
+function keyPressed(e:KeyboardEvent) {
+    if(e.code === "KeyW") {
+        wPressed = (wPressed && false) || (!wPressed && true)
+    }
+    if(e.code === "KeyS") {
+        sPressed =  (sPressed && false) || (!sPressed && true)
+    }
+    if(e.code === "KeyD") {
+        dPressed = true
+    }
+}
+let wPressed:boolean = false;
+let sPressed:boolean = false;
+let dPressed:boolean = false
+
+const radii:Array<Line> = []
+for(let i=0; i<spiroCoeff.length; i++) {
+    radii.push(
+        new Line([], glassRainbowText)
+    )
+}
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
@@ -239,39 +276,118 @@ function animate() {
         axes[i].rotation.z += perlin.noise(time,i,0)
         axes[i].rotation.x = time
     }
-    gridHelper.rotation.y = time
+    const k = 1/4
 
-    // spiroLine.curve.rotateY(0.02)
+    
+    for(let i=0; i<spiroCoeff.length; i++) {
+        const omega = spiroCoeff[i].n
+        const theta = time*k*omega + spiroCoeff[i].an.arg()
+        wheels[i+1].position.set(
+            spiroCoeff[i].an.mag()*Math.cos(theta), 
+            spiroCoeff[i].an.mag()*Math.sin(theta), 
+            0
+            )
+
+        //make line from world coordinates of
+        // wheels[i] to wheels[i+1]
+        const currBall:THREE.Vector3 = new THREE.Vector3();
+        const nextBall:THREE.Vector3 = new THREE.Vector3();
+        wheels[i].getWorldPosition(currBall)
+        wheels[i+1].getWorldPosition(nextBall)
+        
+        radii[i].points = [currBall, nextBall]
+        wheels[0].remove(radii[i].curve)
+        wheels[0].add(radii[i].update())
+    }
+    // gridHelper.rotation.y = time
+
     //@ts-ignore
-    spiroLine.curve.material.dashOffset = time/100
+    // spiroLine.curve.material.dashOffset = time/100
+    spiroLine.points = getSpiroPoints(spiroCoeff, Math.max(0, time*k - 2*Math.PI), time*k)
+    // spiroLine.points = getSpiroPoints(spiroCoeff, 0, 2*Math.PI)
+    // spiroLine.options.lineWidth = time/1%1
+    wheels[0].remove(spiroLine.curve)
+    wheels[0].add(spiroLine.update())
 
-    renderer.render(scene, camera);
+
+
+    // followCursor(wheels, orbitControls, camera, time)
+    
+    if (wPressed) {
+        spiroLine.options.color = 0x13d69c
+        renderer.render(wheels[0], camera);
+    }
+    else {
+        spiroLine.options.color = 0x000000
+        renderer.render(scene, camera);
+    }
+    
+
+    if(sPressed) {
+        followCursor(wheels, orbitControls, camera, time)
+    }
+    else {
+        camera.position.set(0, 0, -60)
+    }
+
+    // scene.rotateZ(-0.004)
+    // scene.rotateY(0.003)
+}
+
+function followCursor(wheels:Array<THREE.Mesh>, orbitControls:OrbitControls, camera:THREE.PerspectiveCamera, time:number) {
+    const cursorPos = new THREE.Vector3()
+    wheels[wheels.length-2].getWorldPosition(cursorPos);
+    orbitControls.target = cursorPos.clone();
+    orbitControls.position0.set(0,0,0);
+    // orbitControls.object.position.set(cursorPos.x, cursorPos.y, cursorPos.z-5-time)
+    camera.position.set(cursorPos.x, cursorPos.y, cursorPos.z-10-time*2)
+    orbitControls.update()
 }
 
 renderer.setAnimationLoop(animate);
 
 window.addEventListener('resize', function() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    // camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-function getSpiroPoints(coefficients:coefficients):Array<THREE.Vector3>{
+function getSpiroPoints(coefficients:coefficients, thetaStart:number=0, thetaEnd:number=2*Math.PI):Array<THREE.Vector3>{
     let spiroPoints = []
-    let thetaStart = 0;
-    let thetaEnd = 2*Math.PI;
     let thetaResolution = 500;
 
     for(let i=0; i<=thetaResolution; i++) {
         let r = new complex(0,0)
+        const I = new complex(0,1)
+        const theta = thetaStart + i * (thetaEnd - thetaStart) / thetaResolution
         for(let j=0; j<coefficients.length; j++) {
-            const theta = thetaStart + i * (thetaEnd - thetaStart) / thetaResolution
             const z = coefficients[j].an
-            
-            const I = new complex(0,1)
             r = r.add(z.mult(I.scalarMult(coefficients[j].n).scalarMult(theta).exp()))
+
+            // wheels[j+1].position.z = r.mag()*Math.sin(theta)
         }
+
+        // spiroPoints.push(new THREE.Vector3(r.real, r.img, r.mag()*Math.sin(theta)))
         spiroPoints.push(new THREE.Vector3(r.real, r.img, 0))
     }
     return spiroPoints;
+}
+
+function makeSpiroWheels(coefficients:coefficients):Array<THREE.Mesh> {
+    let wheels:Array<THREE.Mesh> = [];
+    wheels.push(new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshPhysicalMaterial()))
+    
+    for(let i=0; i<coefficients.length; i++) {
+        const currWheel = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshPhysicalMaterial())
+        wheels[i].add(currWheel)
+        
+        const ring = new THREE.Mesh(
+            new THREE.RingGeometry(coefficients[i].an.mag(), coefficients[i].an.mag()+0.05, 100),
+            new THREE.MeshBasicMaterial({color: 0x919191, side:THREE.DoubleSide})
+        )
+        wheels[i].add(ring)
+
+        wheels.push(currWheel)
+    }
+    return wheels;
 }
