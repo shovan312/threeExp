@@ -10,12 +10,12 @@ export class Line {
     texture: THREE.Texture = new Texture();
     options: any = {}
 
-    constructor(points: Array<THREE.Vector3>, texture:THREE.Texture) {
+    constructor(points: Array<THREE.Vector3>, texture:THREE.Texture, color:THREE.Color=new THREE.Color(0x000000)) {
         this.texture = texture
         this.options = {
             map: this.texture,
             useMap: false,
-            color: 0x000000,
+            color: color,
             opacity: 1,//params.strokes ? .5 : 1,
             dashArray: 0.05,
             dashOffset: 0,
