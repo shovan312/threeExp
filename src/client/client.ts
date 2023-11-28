@@ -9,6 +9,7 @@ import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader';
 const MeshLine = require('three.meshline').MeshLine;
 const MeshLineMaterial = require('three.meshline').MeshLineMaterial;
 import {complex} from 'ts-complex-numbers';
+import { Spiro } from './spiro';
 
 // P = sum(an*(e^int))
 type coefficients = Array<{
@@ -24,6 +25,7 @@ let svgWheels:Array<THREE.Mesh> | undefined = []
 let newSvgLine:Line| undefined;
 let svgCoeffs:coefficients
 const svgRadii:Array<Line> = []
+let svgSpirograph:Spiro;
 
 let flowLine, flowText, nrmlText0, nrmlText1;
 const perlin = new ImprovedNoise();
@@ -142,20 +144,20 @@ svgLoader.load(
             const com=getCenterOfMass(allPointsVec3);
             line.curve.position.set(-com.x, -com.y, -com.z)
 
-            svgCoeffs = getCoeffs(allPointsVec3, 8)
-            const svgSpiro = getSpiroPoints(svgCoeffs)
-            newSvgLine = new Line(svgSpiro, glassRainbowText)
-            
-            scene.add(newSvgLine.curve)
-            // scene.add(line.curve)
-            svgWheels = makeSpiroWheels(svgCoeffs);
-            scene.add(svgWheels[0])
 
-            for(let i=0; i<svgCoeffs.length; i++) {
-                svgRadii.push(
-                    new Line([], glassRainbowText)
-                )
-            }
+            ///////
+            svgCoeffs = getCoeffs(allPoints, 10)
+            svgCoeffs.sort((x, y) => -Math.abs(x.an.mag()) + Math.abs(y.an.mag()))
+            svgSpirograph = new Spiro(svgCoeffs)
+            console.log(svgSpirograph)
+            // const svgSpiro = svgSpirograph.getSpiroPoints(svgCoeffs)
+            // newSvgLine = new Line(svgSpiro, glassRainbowText, new THREE.Color(0x0000ff))
+            
+            // scene.add(newSvgLine.curve)
+            // scene.add(line.curve)
+            // svgWheels = svgSpirograph.makeSpiroWheels(svgCoeffs);
+            // scene.add(svgWheels[0])
+
 
             //SVG image
 			// const material = new THREE.MeshBasicMaterial( {
@@ -191,7 +193,7 @@ let water = new Water( waterGeometry, {
     normalMap1: nrmlText1
 } );
 waterGeometry.computeVertexNormals();
-scene.add( water );
+// scene.add( water );
 
 water.position.y = -0;
 water.rotation.x = Math.PI * - 0.5;
@@ -206,7 +208,7 @@ let water2 = new Water( waterGeometry, {
     normalMap1: nrmlText1
 } );
 // waterGeometry.computeVertexNormals();
-scene.add( water2 );
+// scene.add( water2 );
 
 water2.position.y = -0.1;
 water2.rotation.x = Math.PI *  0.5;
@@ -259,8 +261,8 @@ const spiroCoeff:coefficients = [
 
 // const wheels = makeSpiroWheels(spiroCoeff);
 // scene.add(wheels[0])
-
-const spiroPoints:Array<THREE.Vector3> = getSpiroPoints(spiroCoeff);
+let spirograph = new Spiro(spiroCoeff)
+const spiroPoints:Array<THREE.Vector3> = spirograph.getSpiroPoints(spiroCoeff);
 const spiroLine = new Line(spiroPoints, glassRainbowText);
 // scene.add(spiroLine.curve)
 
@@ -287,69 +289,41 @@ for(let i=0; i<spiroCoeff.length; i++) {
     )
 }
 
+let svgLoaded:boolean = false;
 function animate() {
-    let time:number = clock.getElapsedTime()*1;
-    
-    cubeCamera.update( renderer, scene );
-    axesHelper.rotation.x = time
-    for(let i=0; i<axes.length; i++) {
-        // axes[i].position
-        axes[i].rotation.x += perlin.noise(time,i,0)/10
-        axes[i].rotation.y += perlin.noise(time,i,0)
-        axes[i].rotation.z += perlin.noise(time,i,0)
-        axes[i].rotation.x = time
+    if (svgSpirograph == undefined) {
+        renderer.render(scene, camera);
     }
-    
-    if (svgCoeffs != undefined && svgWheels != undefined && newSvgLine != undefined) {
-        moveRadii(svgCoeffs, svgWheels, svgRadii, time, true, newSvgLine)
-        // makeTrail()
-        followCursor(svgWheels, orbitControls, camera, time, 3)
-        enableSceneChange(newSvgLine, svgWheels, renderer, camera)
-    }
-    // moveRadii(spiroCoeff, wheels, radii, time)
-    gridHelper.rotation.y = time
+    else {
+        if (!svgLoaded) {
+            scene.add(svgSpirograph.wheels[0])
+            svgLoaded = true
+        }
 
-    
-    
-
-    // scene.rotateZ(-0.004)
-    // scene.rotateY(0.003)
-    // renderer.render(scene, camera);
-}
-
-function moveRadii(coeffs:coefficients, wheels:Array<THREE.Mesh>, radii:Array<Line>, time:number, makeTrail:boolean=false, line:Line|undefined=undefined) {
-    const k = 1/4
-
-    for(let i=0; i<coeffs.length; i++) {
-        const omega = coeffs[i].n
-        const theta = time*k*omega + coeffs[i].an.arg()
-        wheels[i+1].position.set(
-            coeffs[i].an.mag()*Math.cos(theta), 
-            coeffs[i].an.mag()*Math.sin(theta), 
-            0
-            )
-
-        //make line from world coordinates of
-        // wheels[i] to wheels[i+1]
-        const currBall:THREE.Vector3 = new THREE.Vector3();
-        const nextBall:THREE.Vector3 = new THREE.Vector3();
-        wheels[i].getWorldPosition(currBall)
-        wheels[i+1].getWorldPosition(nextBall)
+        let time:number = clock.getElapsedTime()*1;
         
-        radii[i].points = [currBall, nextBall]
-        wheels[0].remove(radii[i].curve)
-        wheels[0].add(radii[i].update())
-    }
+        cubeCamera.update( renderer, scene );
+        axesHelper.rotation.x = time
+        for(let i=0; i<axes.length; i++) {
+            // axes[i].position
+            axes[i].rotation.x += perlin.noise(time,i,0)/10
+            axes[i].rotation.y += perlin.noise(time,i,0)
+            axes[i].rotation.z += perlin.noise(time,i,0)
+            axes[i].rotation.x = time
+        }
 
-    if (makeTrail && line!=undefined) {
-        //@ts-ignore
-        spiroLine.curve.material.dashOffset = time/10
-        line.points = getSpiroPoints(coeffs, Math.max(0, time*k - 2*Math.PI), time*k)
-        // spiroLine.points = getSpiroPoints(spiroCoeff, 0, 2*Math.PI)
-        // spiroLine.options.lineWidth = time/1%1
-        wheels[0].remove(line.curve)
-        wheels[0].add(line.update())
+
+        svgSpirograph.moveRadii(time, true)
+        followCursor(svgSpirograph.wheels, orbitControls, camera, time, 3)
+        enableSceneChange(svgSpirograph.line, svgSpirograph.wheels, renderer, camera)
+        gridHelper.rotation.y = time
+
+        // scene.rotateZ(-0.004)
+        // scene.rotateY(0.003)
+        renderer.render(scene, camera);
     }
+    renderer.render(scene, camera);
+
 }
 
 function enableSceneChange(line:Line, wheels:Array<THREE.Mesh>, renderer:THREE.Renderer, camera:THREE.PerspectiveCamera) {
@@ -369,7 +343,7 @@ function followCursor(wheels:Array<THREE.Mesh>, orbitControls:OrbitControls, cam
     orbitControls.target = cursorPos.clone();
     orbitControls.position0.set(0,0,0);
     // orbitControls.object.position.set(cursorPos.x, cursorPos.y, cursorPos.z-5-time)
-    camera.position.set(cursorPos.x, cursorPos.y, cursorPos.z-10-time*speed)
+    camera.position.set(cursorPos.x, cursorPos.y, Math.min(20, cursorPos.z-10-time*speed))
     orbitControls.update()
 }
 
@@ -381,76 +355,23 @@ window.addEventListener('resize', function() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-function getSpiroPoints(coefficients:coefficients, thetaStart:number=0, thetaEnd:number=2*Math.PI):Array<THREE.Vector3>{
-    let spiroPoints = []
-    let thetaResolution = 500;
-
-    for(let i=0; i<thetaResolution; i++) {
-        let r = new complex(0,0)
-        const I = new complex(0,1)
-        const theta = thetaStart + i * (thetaEnd - thetaStart) / thetaResolution
-        for(let j=0; j<coefficients.length; j++) {
-            const z = coefficients[j].an
-            r = r.add(z.mult(I.scalarMult(coefficients[j].n*theta).exp()))
-            // wheels[j+1].position.z = r.mag()*Math.sin(theta)
-        }
-
-        // spiroPoints.push(new THREE.Vector3(r.real, r.img, r.mag()*Math.sin(theta)))
-        spiroPoints.push(new THREE.Vector3(r.real, r.img, 0))
-    }
-    return spiroPoints;
-}
-
-function makeSpiroWheels(coefficients:coefficients):Array<THREE.Mesh> {
-    let wheels:Array<THREE.Mesh> = [];
-    wheels.push(new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshPhysicalMaterial()))
-    
-    for(let i=0; i<coefficients.length; i++) {
-        const currWheel = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshPhysicalMaterial())
-        wheels[i].add(currWheel)
-        
-        const ring = new THREE.Mesh(
-            new THREE.RingGeometry(coefficients[i].an.mag(), coefficients[i].an.mag()+0.05, 100),
-            new THREE.MeshBasicMaterial({color: 0x919191, side:THREE.DoubleSide})
-        )
-        wheels[i].add(ring)
-
-        wheels.push(currWheel)
-    }
-    return wheels;
-}
-
 function getIthCoeff(f: Array<complex>, n: number):complex {
     let sum = new complex(0,0);
     for(let i=0; i<f.length-1; i++) {
         const curr = f[i];
         const next = f[i+1];
 
-        const I = new complex(0, 1);
-        
         //e^(i*-n*theta) 
-        // const theta = curr.arg()
+        const I = new complex(0, 1);
         const theta = 2*Math.PI*(i/f.length)
-        // const theta = curr.arg()
         const exp = I.scalarMult(-n*theta).exp();
-        // console.log(deltaTheta, complexStr(curr.mult(exp)))
 
         sum = sum.add(curr.mult(exp).scalarMult(2*Math.PI*(1/f.length)))
     }
     let ret = sum.scalarMult(1/(2*Math.PI))
-    
     if (ret.mag() < 0.01) { return new complex(0,0) } return ret;  
 }
 
-//// Inverse FT test
-
-console.log(getCenterOfMass(spiroPoints))
-let coeffs = getCoeffs(spiroPoints, 18)
-coeffs.forEach(x=>console.log(x.n, complexStr(x.an)))
-const newPoints = getSpiroPoints(coeffs)
-
-const newCurve = new Line(newPoints, glassRainbowText); 
-// scene.add(newCurve.curve)
 
 function complexStr(z:complex) {
     return z.real.toPrecision(4) + " " + z.img.toPrecision(4) + "i"
