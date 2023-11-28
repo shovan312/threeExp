@@ -20,6 +20,10 @@ let material:LineBasicMaterial,sideLen=4, curves:Array<THREE.Line>=[],
     depth=1, colors:Array<number>=[],
     lines:Array<Array<THREE.Vector3>> = [],
 maxDepth=6,seedVertices=0
+let svgWheels:Array<THREE.Mesh> | undefined = []
+let newSvgLine:Line| undefined;
+let svgCoeffs:coefficients
+const svgRadii:Array<Line> = []
 
 let flowLine, flowText, nrmlText0, nrmlText1;
 const perlin = new ImprovedNoise();
@@ -36,7 +40,7 @@ const camera = new THREE.PerspectiveCamera(
     0.1,
     1000
 );
-camera.position.set(0, 0, 38);
+camera.position.set(0, 0, 58);
 
 // const camera = new THREE.OrthographicCamera(
 //     -1*window.innerWidth / window.innerHeight,1*window.innerWidth / window.innerHeight,1,-1,
@@ -112,15 +116,13 @@ scene.background = cubeTexture
 const svgLoader = new SVGLoader();
 svgLoader.load(
 	// resource URL
-	'svg/shovan.svg',
+	'svg/bottle.svg',
 	// called when the resource is loaded
 	function ( data ) {
-
 		const paths = data.paths;
 		const group = new THREE.Group();
 
 		for ( let i = 0; i < paths.length; i ++ ) {
-
 			const path = paths[ i ];
 
             for(let i=0; i<path.subPaths[0].curves.length; i++) {
@@ -130,32 +132,54 @@ svgLoader.load(
                 
                 const svgLine = new Line(pointsArr.map(vec2 => new THREE.Vector3(vec2.x/10, vec2.y/10, 0)), glassRainbowText);
                 // scene.add(svgLine.curve)
+
+                allPoints.push(...pointsArr)
             }
 
-			const material = new THREE.MeshBasicMaterial( {
-				color: path.color,
-				side: THREE.DoubleSide,
-				depthWrite: false
-			} );
+            allPoints = allPoints.map(point => new THREE.Vector3(point.x/3, point.y/3, 0))
+            const line = new Line(allPoints, glassRainbowText, new THREE.Color(0xff0000)); 
+            const com=getCenterOfMass(allPoints);
+            line.curve.position.set(-com.x, -com.y, -com.z)
 
-			const shapes = SVGLoader.createShapes( path );
+            svgCoeffs = getCoeffs(allPoints, 8)
+            const svgSpiro = getSpiroPoints(svgCoeffs)
+            newSvgLine = new Line(svgSpiro, glassRainbowText, new THREE.Color(0x0000ff))
+            
+            scene.add(newSvgLine.curve)
+            // scene.add(line.curve)
+            svgWheels = makeSpiroWheels(svgCoeffs);
+            scene.add(svgWheels[0])
 
-			for ( let j = 0; j < shapes.length; j ++ ) {
+            for(let i=0; i<svgCoeffs.length; i++) {
+                svgRadii.push(
+                    new Line([], glassRainbowText)
+                )
+            }
 
-				const shape = shapes[ j ];
-				const geometry = new THREE.ShapeGeometry( shape );
-				const mesh = new THREE.Mesh( geometry, material );
-				group.add( mesh );
+            //SVG image
+			// const material = new THREE.MeshBasicMaterial( {
+			// 	color: path.color,
+			// 	side: THREE.DoubleSide,
+			// 	depthWrite: false
+			// } );
 
-			}
+			// const shapes = SVGLoader.createShapes( path );
+
+			// for ( let j = 0; j < shapes.length; j ++ ) {
+
+			// 	const shape = shapes[ j ];
+			// 	const geometry = new THREE.ShapeGeometry( shape );
+			// 	const mesh = new THREE.Mesh( geometry, material );
+			// 	group.add( mesh );
+
+			// }
 		}
 		// scene.add( group );
-
 	}
 );
 ///////////////////////////////
 
-let waterGeometry = new THREE.PlaneGeometry( 80, 80 );
+let waterGeometry = new THREE.PlaneGeometry( 400, 400 );
 let water = new Water( waterGeometry, {
     // color: '#42daf5',
     scale: 2,
@@ -166,7 +190,7 @@ let water = new Water( waterGeometry, {
     normalMap1: nrmlText1
 } );
 waterGeometry.computeVertexNormals();
-// scene.add( water );
+scene.add( water );
 
 water.position.y = -0;
 water.rotation.x = Math.PI * - 0.5;
@@ -181,7 +205,7 @@ let water2 = new Water( waterGeometry, {
     normalMap1: nrmlText1
 } );
 // waterGeometry.computeVertexNormals();
-// scene.add( water2 );
+scene.add( water2 );
 
 water2.position.y = -0.1;
 water2.rotation.x = Math.PI *  0.5;
@@ -216,12 +240,12 @@ sphere.castShadow = true;
 // scene.add(sphere);
 
 const spiroCoeff:coefficients = [
-    {n:-5, an:new complex(10, 8/3)},
-    {n:1, an:new complex(-8,0)},
-    {n:7, an:new complex(8/2,0)},
-    {n:13, an:new complex(5/3, 2/3)},
-    {n:-29, an:new complex(0.8, 0)},
-    {n:49, an:new complex(0.1, 0.2)}
+    // {n:-5, an:new complex(10, 8/3)},
+    {n:1, an:new complex(8,0)},
+    {n:10, an:new complex(4,10/3)},
+    // {n:13, an:new complex(5/3, 2/3)},
+    // {n:-29, an:new complex(0.8, 0)},
+    // {n:49, an:new complex(0.1, 0.2)}
 ]
 
 // const spiroCoeff:coefficients = [
@@ -232,14 +256,12 @@ const spiroCoeff:coefficients = [
 //     {n:9, an:new complex(-0.05003523694,0)},
 // ]
 
-const wheels = makeSpiroWheels(spiroCoeff);
-scene.add(wheels[0])
+// const wheels = makeSpiroWheels(spiroCoeff);
+// scene.add(wheels[0])
 
 const spiroPoints:Array<THREE.Vector3> = getSpiroPoints(spiroCoeff);
 const spiroLine = new Line(spiroPoints, glassRainbowText);
 // scene.add(spiroLine.curve)
-
-
 
 document.addEventListener('keydown', (e) => keyPressed(e));
 function keyPressed(e:KeyboardEvent) {
@@ -276,15 +298,33 @@ function animate() {
         axes[i].rotation.z += perlin.noise(time,i,0)
         axes[i].rotation.x = time
     }
-    const k = 1/4
+    
+    if (svgCoeffs != undefined && svgWheels != undefined && newSvgLine != undefined) {
+        moveRadii(svgCoeffs, svgWheels, svgRadii, time, true, newSvgLine)
+        // makeTrail()
+        followCursor(svgWheels, orbitControls, camera, time, 3)
+        enableSceneChange(newSvgLine, svgWheels, renderer, camera)
+    }
+    // moveRadii(spiroCoeff, wheels, radii, time)
+    gridHelper.rotation.y = time
 
     
-    for(let i=0; i<spiroCoeff.length; i++) {
-        const omega = spiroCoeff[i].n
-        const theta = time*k*omega + spiroCoeff[i].an.arg()
+    
+
+    // scene.rotateZ(-0.004)
+    // scene.rotateY(0.003)
+    // renderer.render(scene, camera);
+}
+
+function moveRadii(coeffs:coefficients, wheels:Array<THREE.Mesh>, radii:Array<Line>, time:number, makeTrail:boolean=false, line:Line|undefined=undefined) {
+    const k = 1/4
+
+    for(let i=0; i<coeffs.length; i++) {
+        const omega = coeffs[i].n
+        const theta = time*k*omega + coeffs[i].an.arg()
         wheels[i+1].position.set(
-            spiroCoeff[i].an.mag()*Math.cos(theta), 
-            spiroCoeff[i].an.mag()*Math.sin(theta), 
+            coeffs[i].an.mag()*Math.cos(theta), 
+            coeffs[i].an.mag()*Math.sin(theta), 
             0
             )
 
@@ -299,55 +339,43 @@ function animate() {
         wheels[0].remove(radii[i].curve)
         wheels[0].add(radii[i].update())
     }
-    // gridHelper.rotation.y = time
 
-    //@ts-ignore
-    // spiroLine.curve.material.dashOffset = time/100
-    spiroLine.points = getSpiroPoints(spiroCoeff, Math.max(0, time*k - 2*Math.PI), time*k)
-    // spiroLine.points = getSpiroPoints(spiroCoeff, 0, 2*Math.PI)
-    // spiroLine.options.lineWidth = time/1%1
-    wheels[0].remove(spiroLine.curve)
-    wheels[0].add(spiroLine.update())
+    if (makeTrail && line!=undefined) {
+        //@ts-ignore
+        spiroLine.curve.material.dashOffset = time/10
+        line.points = getSpiroPoints(coeffs, Math.max(0, time*k - 2*Math.PI), time*k)
+        // spiroLine.points = getSpiroPoints(spiroCoeff, 0, 2*Math.PI)
+        // spiroLine.options.lineWidth = time/1%1
+        wheels[0].remove(line.curve)
+        wheels[0].add(line.update())
+    }
+}
 
-
-
-    // followCursor(wheels, orbitControls, camera, time)
-    
+function enableSceneChange(line:Line, wheels:Array<THREE.Mesh>, renderer:THREE.Renderer, camera:THREE.PerspectiveCamera) {
     if (wPressed) {
-        spiroLine.options.color = 0x13d69c
+        line.options.color = 0x13d69c
         renderer.render(wheels[0], camera);
     }
     else {
-        spiroLine.options.color = 0x000000
+        line.options.color = 0x000000
         renderer.render(scene, camera);
     }
-    
-
-    if(sPressed) {
-        followCursor(wheels, orbitControls, camera, time)
-    }
-    else {
-        camera.position.set(0, 0, -60)
-    }
-
-    // scene.rotateZ(-0.004)
-    // scene.rotateY(0.003)
 }
 
-function followCursor(wheels:Array<THREE.Mesh>, orbitControls:OrbitControls, camera:THREE.PerspectiveCamera, time:number) {
+function followCursor(wheels:Array<THREE.Mesh>, orbitControls:OrbitControls, camera:THREE.PerspectiveCamera, time:number, speed:number) {
     const cursorPos = new THREE.Vector3()
     wheels[wheels.length-2].getWorldPosition(cursorPos);
     orbitControls.target = cursorPos.clone();
     orbitControls.position0.set(0,0,0);
     // orbitControls.object.position.set(cursorPos.x, cursorPos.y, cursorPos.z-5-time)
-    camera.position.set(cursorPos.x, cursorPos.y, cursorPos.z-10-time*2)
+    camera.position.set(cursorPos.x, cursorPos.y, cursorPos.z-10-time*speed)
     orbitControls.update()
 }
 
 renderer.setAnimationLoop(animate);
 
 window.addEventListener('resize', function() {
-    // camera.aspect = window.innerWidth / window.innerHeight;
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
@@ -356,14 +384,13 @@ function getSpiroPoints(coefficients:coefficients, thetaStart:number=0, thetaEnd
     let spiroPoints = []
     let thetaResolution = 500;
 
-    for(let i=0; i<=thetaResolution; i++) {
+    for(let i=0; i<thetaResolution; i++) {
         let r = new complex(0,0)
         const I = new complex(0,1)
         const theta = thetaStart + i * (thetaEnd - thetaStart) / thetaResolution
         for(let j=0; j<coefficients.length; j++) {
             const z = coefficients[j].an
-            r = r.add(z.mult(I.scalarMult(coefficients[j].n).scalarMult(theta).exp()))
-
+            r = r.add(z.mult(I.scalarMult(coefficients[j].n*theta).exp()))
             // wheels[j+1].position.z = r.mag()*Math.sin(theta)
         }
 
@@ -390,4 +417,56 @@ function makeSpiroWheels(coefficients:coefficients):Array<THREE.Mesh> {
         wheels.push(currWheel)
     }
     return wheels;
+}
+
+function getIthCoeff(f: Array<complex>, n: number):complex {
+    let sum = new complex(0,0);
+    for(let i=0; i<f.length-1; i++) {
+        const curr = f[i];
+        const next = f[i+1];
+
+        const I = new complex(0, 1);
+        
+        //e^(i*-n*theta) 
+        // const theta = curr.arg()
+        const theta = 2*Math.PI*(i/f.length)
+        // const theta = curr.arg()
+        const exp = I.scalarMult(-n*theta).exp();
+        // console.log(deltaTheta, complexStr(curr.mult(exp)))
+
+        sum = sum.add(curr.mult(exp).scalarMult(2*Math.PI*(1/f.length)))
+    }
+    let ret = sum.scalarMult(1/(2*Math.PI))
+    
+    if (ret.mag() < 0.01) { return new complex(0,0) } return ret;  
+}
+
+//// Inverse FT test
+
+console.log(getCenterOfMass(spiroPoints))
+let coeffs = getCoeffs(spiroPoints, 18)
+coeffs.forEach(x=>console.log(x.n, complexStr(x.an)))
+const newPoints = getSpiroPoints(coeffs)
+
+const newCurve = new Line(newPoints, glassRainbowText, new THREE.Color(0xff0000)); 
+// scene.add(newCurve.curve)
+
+function complexStr(z:complex) {
+    return z.real.toPrecision(4) + " " + z.img.toPrecision(4) + "i"
+}
+
+function getCenterOfMass(points:Array<THREE.Vector3>) : THREE.Vector3 {
+    return points.reduce(
+        (accumulator, currentValue) => accumulator.add(currentValue),
+        new THREE.Vector3(0,0,0),
+      ).multiplyScalar(1/points.length);
+}
+
+function getCoeffs(points:Array<THREE.Vector3>, n:number):coefficients {
+    let ret = []
+    for(let i=1; i<=n; i++) {
+        ret.push({n:i, an: getIthCoeff(points.map(vec3 => new complex(vec3.x, vec3.y)), i)})
+        ret.push({n:-i, an: getIthCoeff(points.map(vec3 => new complex(vec3.x, vec3.y)), -i)})
+    }
+    return ret as coefficients;
 }
