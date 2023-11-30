@@ -21,9 +21,6 @@ export class Spiro {
         let points = this.getSpiroPoints(coeffs, thetaStart, thetaEnd);
         this.line = new Line(points)
         this.wheels = this.makeSpiroWheels(coeffs)
-        for(let i=0; i<coeffs.length; i++) {
-            this.radii.push(new Line())
-        }
     }
 
     public getSpiroPoints(coefficients:coefficients, thetaStart:number=0, thetaEnd:number=2*Math.PI):Array<THREE.Vector3>{
@@ -61,16 +58,17 @@ export class Spiro {
                 wheels[i].add(ring)
         
                 wheels.push(currWheel)
+
+                this.radii.push(new Line())
             }
             return wheels;
         }
 
-    public moveRadii(time:number, makeTrail:boolean=false) {
-        const k = 1/4
-        // console.log(time)
+    public moveRadii(time:number, makeTrail:boolean=false, speed:number=2, thetaLength:number=2*Math.PI) {
+        // console.log(this.wheels[this.wheels.length-1])
         for(let i=0; i<this.coeffs.length; i++) {
             const omega = this.coeffs[i].n
-            const theta = time*k*omega + this.coeffs[i].an.arg()
+            const theta = time*speed*omega + this.coeffs[i].an.arg()
             this.wheels[i+1].position.set(
                 this.coeffs[i].an.mag()*Math.cos(theta), 
                 this.coeffs[i].an.mag()*Math.sin(theta), 
@@ -92,12 +90,17 @@ export class Spiro {
         if (makeTrail && this.line!=undefined) {
             //@ts-ignore
             this.line.curve.material.dashOffset = time/10
-            this.line.points = this.getSpiroPoints(this.coeffs, Math.max(0, time*k - 2*Math.PI), time*k)
+            this.line.points = this.getSpiroPoints(this.coeffs, Math.max(0, time*speed - thetaLength), time*speed)
             // spiroLine.points = getSpiroPoints(spiroCoeff, 0, 2*Math.PI)
             // spiroLine.options.lineWidth = time/1%1
             this.wheels[0].remove(this.line.curve)
             this.wheels[0].add(this.line.update())
         }
+    }
+
+    public update() {
+        this.wheels = this.makeSpiroWheels(this.coeffs)
+        return this.wheels[0];
     }
 }
 
