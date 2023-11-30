@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
+import { GUI } from 'dat.gui'
 import { Water } from 'three/examples/jsm/objects/Water2.js';
 import {AxesHelper, ColorRepresentation, CubeTexture, GridHelper, LineBasicMaterial} from "three";
 import {Hilbert} from "./hilbert";
@@ -17,17 +18,11 @@ type coefficients = Array<{
     an: complex
 }>
 
-let material:LineBasicMaterial,sideLen=4, curves:Array<THREE.Line>=[],
-    depth=1, colors:Array<number>=[],
-    lines:Array<Array<THREE.Vector3>> = [],
-maxDepth=6,seedVertices=0
-let svgWheels:Array<THREE.Mesh> | undefined = []
-let newSvgLine:Line| undefined;
+
 let svgCoeffs:coefficients
-const svgRadii:Array<Line> = []
 let svgSpirograph:Spiro;
 
-let flowLine, flowText, nrmlText0, nrmlText1;
+let  flowText, nrmlText0, nrmlText1;
 const perlin = new ImprovedNoise();
 /////////////////////////
 const renderer = new THREE.WebGLRenderer({antialias: true});
@@ -99,10 +94,9 @@ flowText = loader.load('./Water_1_M_Flow.jpg');
 nrmlText0 = loader.load('./Water_1_M_Normal.jpg');
 nrmlText1 = loader.load('./Water_2_M_Normal.jpg');
 let glassRainbowText = loader.load('./glass-rainbow.jpg');
-let paperText = loader.load('./paper.png');
-let whitePaintText = loader.load('./white-paint.jpg');
-let cloudText = loader.load('./cloud.png');
-// gui = new GUI();
+let gui = new GUI();
+
+
 let cubeTexture:CubeTexture = new THREE.CubeTextureLoader().load([
     'paperSquare.png',
     'paperSquare.png',
@@ -117,47 +111,33 @@ scene.background = cubeTexture
 
 const svgLoader = new SVGLoader();
 svgLoader.load(
-	// resource URL
 	'svg/bottle.svg',
-	// called when the resource is loaded
 	function ( data ) {
 		const paths = data.paths;
 		const group = new THREE.Group();
 
-		for ( let i = 0; i < paths.length; i ++ ) {
-			const path = paths[ i ];
+		for ( let pathNum = 0; pathNum < paths.length; pathNum ++ ) {
+			const path = paths[pathNum];
             const curveDivisions = 20;
+            const scale = -1/6;
             let allPoints = []
-            for(let i1=0; i1<path.subPaths[0].curves.length; i1++) {
-                const curve1:THREE.Curve<THREE.Vector2> = path.subPaths[0].curves[i1]
-                const pointsArr:THREE.Vector2[] = curve1.getPoints(curveDivisions - 1);
+            for(let j=0; j<path.subPaths[0].curves.length; j++) {
+                const curve:THREE.Curve<THREE.Vector2> = path.subPaths[0].curves[j]
+                const pointsArr:THREE.Vector2[] = curve.getPoints(curveDivisions - 1).map(vec => new THREE.Vector2(vec.x*scale, vec.y*scale));
                 let geometry = new THREE.BufferGeometry().setFromPoints(pointsArr);
-                
-                const svgLine = new Line(pointsArr.map(vec2 => new THREE.Vector3(vec2.x/10, vec2.y/10, 0)), glassRainbowText);
                 // scene.add(svgLine.curve)
-
                 allPoints.push(...pointsArr)
             }
 
-            allPoints = allPoints.map(point => new THREE.Vector3(point.x/3, point.y/3, 0))
-            const line = new Line(allPoints, glassRainbowText, new THREE.Color(0xff0000)); 
+            allPoints = allPoints.map(point => new THREE.Vector3(point.x, point.y, 0))
+            const svgLine = new Line(allPoints, undefined, new THREE.Color(0xff0000)); 
             const com=getCenterOfMass(allPoints);
-            line.curve.position.set(-com.x, -com.y, -com.z)
-
+            svgLine.curve.position.set(-com.x, -com.y, -com.z)
 
             ///////
-            svgCoeffs = getCoeffs(allPoints, 10)
+            svgCoeffs = getCoeffs(allPoints,6)
             svgCoeffs.sort((x, y) => -Math.abs(x.an.mag()) + Math.abs(y.an.mag()))
             svgSpirograph = new Spiro(svgCoeffs)
-            console.log(svgSpirograph)
-            // const svgSpiro = svgSpirograph.getSpiroPoints(svgCoeffs)
-            // newSvgLine = new Line(svgSpiro, glassRainbowText, new THREE.Color(0x0000ff))
-            
-            // scene.add(newSvgLine.curve)
-            // scene.add(line.curve)
-            // svgWheels = svgSpirograph.makeSpiroWheels(svgCoeffs);
-            // scene.add(svgWheels[0])
-
 
             //SVG image
 			// const material = new THREE.MeshBasicMaterial( {
@@ -165,16 +145,12 @@ svgLoader.load(
 			// 	side: THREE.DoubleSide,
 			// 	depthWrite: false
 			// } );
-
 			// const shapes = SVGLoader.createShapes( path );
-
 			// for ( let j = 0; j < shapes.length; j ++ ) {
-
 			// 	const shape = shapes[ j ];
 			// 	const geometry = new THREE.ShapeGeometry( shape );
 			// 	const mesh = new THREE.Mesh( geometry, material );
 			// 	group.add( mesh );
-
 			// }
 		}
 		// scene.add( group );
@@ -208,7 +184,6 @@ let water2 = new Water( waterGeometry, {
     normalMap0: nrmlText0,
     normalMap1: nrmlText1
 } );
-// waterGeometry.computeVertexNormals();
 // scene.add( water2 );
 
 water2.position.y = -0.1;
@@ -244,14 +219,15 @@ sphere.castShadow = true;
 // scene.add(sphere);
 
 const spiroCoeff:coefficients = [
-    // {n:-5, an:new complex(10, 8/3)},
+    {n:5, an:new complex(10, 8/3)},
     {n:1, an:new complex(8,0)},
-    {n:10, an:new complex(4,10/3)},
+    {n:-7, an:new complex(4,10/3)},
     // {n:13, an:new complex(5/3, 2/3)},
     // {n:-29, an:new complex(0.8, 0)},
     // {n:49, an:new complex(0.1, 0.2)}
 ]
 
+//square
 // const spiroCoeff:coefficients = [
 //     {n:-7, an:new complex(-0.0827113100467,0)},
 //     {n:-3, an:new complex(-0.4503171322,0)},
@@ -260,12 +236,8 @@ const spiroCoeff:coefficients = [
 //     {n:9, an:new complex(-0.05003523694,0)},
 // ]
 
-// const wheels = makeSpiroWheels(spiroCoeff);
-// scene.add(wheels[0])
 let spirograph = new Spiro(spiroCoeff)
 const spiroPoints:Array<THREE.Vector3> = spirograph.getSpiroPoints(spiroCoeff);
-const spiroLine = new Line(spiroPoints, glassRainbowText);
-// scene.add(spiroLine.curve)
 
 document.addEventListener('keydown', (e) => keyPressed(e));
 function keyPressed(e:KeyboardEvent) {
@@ -282,16 +254,19 @@ function keyPressed(e:KeyboardEvent) {
 let wPressed:boolean = false;
 let sPressed:boolean = false;
 let dPressed:boolean = false
-
-const radii:Array<Line> = []
-for(let i=0; i<spiroCoeff.length; i++) {
-    radii.push(
-        new Line([], glassRainbowText)
-    )
-}
-
 let svgLoaded:boolean = false;
 function animate() {
+    let time:number = clock.getElapsedTime()*1;
+    gridHelper.rotation.y = time
+    cubeCamera.update( renderer, scene );
+    // axesHelper.rotation.x = time
+    // for(let i=0; i<axes.length; i++) {
+    //     axes[i].rotation.x += perlin.noise(time,i,0)/10
+    //     axes[i].rotation.y += perlin.noise(time,i,0)
+    //     axes[i].rotation.z += perlin.noise(time,i,0)
+    //     axes[i].rotation.x = time
+    // }
+
     if (svgSpirograph == undefined) {
         renderer.render(scene, camera);
     }
@@ -300,30 +275,25 @@ function animate() {
             scene.add(svgSpirograph.wheels[0])
             svgLoaded = true
         }
-
-        let time:number = clock.getElapsedTime()*1;
-        
-        cubeCamera.update( renderer, scene );
-        axesHelper.rotation.x = time
-        for(let i=0; i<axes.length; i++) {
-            // axes[i].position
-            axes[i].rotation.x += perlin.noise(time,i,0)/10
-            axes[i].rotation.y += perlin.noise(time,i,0)
-            axes[i].rotation.z += perlin.noise(time,i,0)
-            axes[i].rotation.x = time
-        }
-
-
-        svgSpirograph.moveRadii(time, true)
-        followCursor(svgSpirograph.wheels, orbitControls, camera, time, 3)
+        let k=1/2
+        svgSpirograph.moveRadii(time, true, k, Math.PI)
+        // followCursor(svgSpirograph.wheels, orbitControls, camera, time, 3)
         enableSceneChange(svgSpirograph.line, svgSpirograph.wheels, renderer, camera)
-        gridHelper.rotation.y = time
 
-        // scene.rotateZ(-0.004)
-        // scene.rotateY(0.003)
-        renderer.render(scene, camera);
+        if(time > 2*Math.PI) {
+            let transformScale = 0.995
+            //giving error when target has extra n. need to add wheels dynamically
+            // svgSpirograph.coeffs = tranformCoeffs(svgSpirograph.coeffs, spiroCoeff, Math.min(1, (time-2*Math.PI)/500))
+
+            // scene.remove(svgSpirograph.wheels[0])
+            // scene.add(svgSpirograph.update())
+            // for(let i=1; i<svgSpirograph.coeffs.length; i++) {
+            //     svgSpirograph.coeffs[i].an = svgSpirograph.coeffs[i].an.scalarMult(transformScale)       
+            // }
+        }
     }
-    renderer.render(scene, camera);
+    
+    // renderer.render(scene, camera);
 
 }
 
@@ -392,4 +362,22 @@ function getCoeffs(points:Array<THREE.Vector3>, n:number):coefficients {
         ret.push({n:-i, an: getIthCoeff(points.map(vec3 => new complex(vec3.x, vec3.y)), -i)})
     }
     return ret as coefficients;
+}
+
+function tranformCoeffs(source:coefficients, target:coefficients, t:number) {
+    let nSet:Set<number> = new Set();
+    source.forEach(coeff => nSet.add(coeff.n))
+    target.forEach(coeff => nSet.add(coeff.n))
+    let ret:coefficients = []
+    nSet.forEach(num => ret.push({n:num, an:new complex(0,0)}))
+    source.forEach(sCoeff => {
+        const sInd= ret.findIndex(c => c.n == sCoeff.n)
+        ret[sInd].an = ret[sInd].an.add(sCoeff.an.scalarMult(1-t))
+    })
+    target.forEach(tCoeff => {
+        const tInd= ret.findIndex(c => c.n == tCoeff.n)
+        // console.log(tInd)
+        ret[tInd].an = ret[tInd].an.add(tCoeff.an.scalarMult(t))
+    })
+    return ret
 }
