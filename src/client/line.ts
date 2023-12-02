@@ -30,6 +30,7 @@ export class Line {
             side: THREE.DoubleSide
         }
         this.makeLine(points)
+        this.points = points
     }
 
     public makeLine(inp:Array<THREE.Vector3>):THREE.Mesh {
@@ -37,10 +38,11 @@ export class Line {
         const line = new MeshLine();
 
         // @ts-ignore
-        line.setGeometry(geometry, function(p) { return p/70})//*Math.sin(p*2*Math.PI)});
+        line.setGeometry(geometry, function(p) { return 1/70})//*Math.sin(p*2*Math.PI)});
         let color = new THREE.Color(0xee5511);
         this.material = new MeshLineMaterial(this.options);
         this.curve = new THREE.Mesh(line, this.material);
+        this.curve.name = Math.random().toString();
         return this.curve;
     }
 
