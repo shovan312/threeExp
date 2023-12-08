@@ -1,8 +1,10 @@
 {
     "compilerOptions": {
-        "target": "ES6",
+        "target": "es2022",
         "moduleResolution": "node",
-        "strict": true
+        "strict": true,
+        "allowSyntheticDefaultImports": true,
+        "module": "es2022"
     },
     "include": ["**/*.ts"]
 }
