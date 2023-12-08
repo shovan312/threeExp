@@ -51,7 +51,6 @@ export class Spiro {
                 new THREE.MeshBasicMaterial({color: 0x919191, side:THREE.DoubleSide, transparent: true})
             )
             wheels[i].add(ring)
-
             wheels.push(currWheel)
 
             const radius = new Line([], new THREE.Texture(), new THREE.Color(0xaaaaaa))
@@ -86,11 +85,8 @@ export class Spiro {
         }
 
         if (makeTrail && this.line!=undefined) {
-            //@ts-ignore
-            this.line.curve.material.dashOffset = time/10
+            // this.line.points = this.getSpiroPoints(this.coeffs, 0, 2*Math.PI)
             this.line.points = this.getSpiroPoints(this.coeffs, Math.max(0, time*speed - thetaLength), time*speed, thetaResolution)
-            // spiroLine.points = getSpiroPoints(spiroCoeff, 0, 2*Math.PI)
-            // spiroLine.options.lineWidth = time/1%1
             this.wheels[0].remove(this.line.curve)
             this.line.curve.geometry.dispose()
             this.wheels[0].add(this.line.update())
@@ -98,15 +94,7 @@ export class Spiro {
     }
 
     public update() {
-        for(let i=0; i<this.wheels.length; i++) {
-            this.wheels[i].geometry.dispose();
-            for(let j=1; j<this.wheels[i].children.length; j++) {
-                const sss:THREE.Mesh = this.wheels[i].children[j] as THREE.Mesh
-                sss.geometry.dispose()
-            }
-        }
-        this.wheels = this.makeSpiroWheels(this.coeffs)
-        return this.wheels[0];
+
     }
 }
 
