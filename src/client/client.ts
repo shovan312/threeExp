@@ -46,64 +46,69 @@ function keyPressed(e:KeyboardEvent) {
     if (e.code === "KeyB") bPressed = !bPressed
 }
 let wPressed:boolean = false;
-let sPressed:boolean = false;
 let dPressed:boolean = false
 let bPressed:boolean = false
 let svgLoaded:boolean = false;
 let svgUpdated:boolean = false;
 let thetaResolution:number=400;
+let thetaResolutionDelta:number=-0.7;
+
+let sPressed:boolean = false;
+let panCam:boolean = false;
 let sTime:number = 0;
+let lastCamTheta:number = 0;
+let camTheta:number = 0;
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
     gridHelper.rotation.y = time
 
-
     if (svgSpirograph == undefined) {
-        renderer.render(scene, camera);
+        renderer.render(scene, camera); return;
     }
-    else {
-        if (!svgLoaded) {
-            scene.add(svgSpirograph.wheels[0])
-            svgLoaded = true
-        }
-        let k=1/2
-        svgSpirograph.moveRadii(time, true, k, 2*Math.PI, Math.max(7, Math.floor(thetaResolution)))
-        // followCursor(svgSpirograph.wheels, orbitControls, camera, time, 3)
-        enableSceneChange(svgSpirograph.line, svgSpirograph.wheels, renderer, camera, time)
-        thetaResolution -= 0.1
-        if(k*time > 2*Math.PI) {
-            // let transformScale = 0.995
-            svgSpirograph.coeffs = tranformCoeffs(svgSpirograph.coeffs,spiroCoeff, Math.min(1, (k*time-2*Math.PI)/1000))
-            if(!svgUpdated) {
-                // scene.remove(svgSpirograph.wheels[0])
-                // scene.add(svgSpirograph.update())
-                if ((k*time-2*Math.PI)/1000 > 0.01) {
-                    console.log("flipping")
-                    svgUpdated = true
-                }
+    if (!svgLoaded) {
+        scene.add(svgSpirograph.wheels[0]); svgLoaded = true
+    }
+
+    let k=1/2
+    thetaResolution = Math.max(Math.min(400, thetaResolution + thetaResolutionDelta), 3)
+
+    svgSpirograph.moveRadii(time, true, k, 2*Math.PI, Math.max(7, Math.floor(thetaResolution)))
+    // followCursor(svgSpirograph.wheels, orbitControls, camera, time, 3)
+    enableSceneChange(svgSpirograph, renderer, camera, time)
+    if(k*time > 2*Math.PI) {
+        // let transformScale = 0.995
+        svgSpirograph.coeffs = tranformCoeffs(svgSpirograph.coeffs,spirograph.coeffs, Math.min(1, (k*time-2*Math.PI)/1000))
+        if(!svgUpdated) {
+            // scene.remove(svgSpirograph.wheels[0])
+            // scene.add(svgSpirograph.update())
+            if ((k*time-2*Math.PI)/1000 > 0.01) {
+                console.log("flipping")
+                svgUpdated = true
             }
         }
     }
 
     // spirograph.moveRadii(time, true, 1/2, 2*Math.PI, Math.max(7, Math.floor(thetaResolution)))
-    // enableSceneChange(spirograph.line, spirograph.wheels, renderer, camera, time)
+    // enableSceneChange(spirograph, renderer, camera, time)
     // followCursor(spirograph.wheels, orbitControls, camera, time, 3)
     // thetaResolution -= 0.1
     // renderer.render(scene, camera);
     stats.update()
 
     if (sPressed) {
-        if (!sTime) sTime = time;
-        const currTime = time - sTime;
-        const horRadius = 27
-        const verRadius = 5
-        const horVariation = 2 + Math.sin(currTime)
-        camera.position.set(horRadius*horVariation*Math.sin(currTime/5), verRadius*Math.sin(1/2*currTime), horRadius*horVariation*Math.cos(currTime/5))
+        panCam = !panCam; sPressed = false; sTime = time
+        if(panCam) lastCamTheta = camTheta
+    }
+    if (panCam) {
+        camTheta = lastCamTheta + time - sTime;
+        const horRadius = 27, verRadius = 5, horVariation = 2 + Math.sin(camTheta)
+        camera.position.set(horRadius*horVariation*Math.sin(camTheta/5), verRadius*Math.sin(1/2*camTheta), horRadius*horVariation*Math.cos(camTheta/5))
         camera.lookAt(0,0,0)
     }
     if (dPressed) {
-        thetaResolution += 0.4
+        thetaResolutionDelta *= -1
+        dPressed = false
     }
 
     // console.log(renderer.info.memory)
@@ -112,16 +117,15 @@ function animate() {
 animate()
 // renderer.setAnimationLoop(animate);
 
-function enableSceneChange(line:Line, wheels:Array<THREE.Mesh>, renderer:THREE.Renderer, camera:THREE.PerspectiveCamera | THREE.OrthographicCamera, time:number) {
+function enableSceneChange(spiro:Spiro, renderer:THREE.Renderer, camera:THREE.PerspectiveCamera | THREE.OrthographicCamera, time:number) {
     if (wPressed) {
-        // console.log(Math.abs(time - Math.floor(time) - 1/2))
-        // line.options.color = new THREE.Color(2*Math.abs(time/5 - Math.floor(time/5) - 1/2), 252/255, 105/255)
-        line.options.color = 0x00fc69
-        renderer.render(wheels[0], camera);
-        // composer.render()
+        let sawWave = 2*Math.abs(time/15 - Math.floor(time/15) - 1/2)
+        spiro.line.options.color = new THREE.Color(sawWave, 2/255, 1-sawWave)
+        // spiro.line.options.color = 0x00fc69
+        renderer.render(spiro.wheels[0], camera);
     }
     else {
-        line.options.color = 0x000000
+        spiro.line.options.color = 0x000000
         renderer.render(scene, camera);
     }
 }
