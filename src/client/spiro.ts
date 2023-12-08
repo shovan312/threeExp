@@ -1,31 +1,27 @@
 import * as THREE from 'three';
-import {ColorRepresentation, LineBasicMaterial, Texture} from "three";
-const MeshLine = require('three.meshline').MeshLine;
-const MeshLineMaterial = require('three.meshline').MeshLineMaterial;
 import {Line} from "./line";
 import {complex} from 'ts-complex-numbers';
 
-
-export type coefficients = Array<{
+export type coefficient = {
     n: number,
     an: complex
-}>
+}
+
 export class Spiro {
     line: Line = new Line();
-    coeffs:coefficients = []
+    coeffs:Array<coefficient> = []
     wheels: Array<THREE.Mesh> = []
     radii: Array<Line> = []
 
-    constructor(coeffs: coefficients, thetaStart:number = 0, thetaEnd:number = 2*Math.PI) {
+    constructor(coeffs: Array<coefficient>, thetaStart:number = 0, thetaEnd:number = 2*Math.PI) {
         this.coeffs = coeffs
         let points = this.getSpiroPoints(coeffs, thetaStart, thetaEnd);
         this.line = new Line(points)
         this.wheels = this.makeSpiroWheels(coeffs)
     }
 
-    public getSpiroPoints(coefficients:coefficients, thetaStart:number=0, thetaEnd:number=2*Math.PI, thetaResolution:number=200):Array<THREE.Vector3>{
+    public getSpiroPoints(coefficients:Array<coefficient>, thetaStart:number=0, thetaEnd:number=2*Math.PI, thetaResolution:number=200):Array<THREE.Vector3>{
         let spiroPoints = []
-
         for(let i=0; i<=thetaResolution; i++) {
             let r = new complex(0,0)
             const I = new complex(0,1)
@@ -42,30 +38,28 @@ export class Spiro {
         return spiroPoints;
     }
 
-    public makeSpiroWheels(coefficients:coefficients):Array<THREE.Mesh> {
-            let wheels:Array<THREE.Mesh> = [];
-            wheels.push(new THREE.Mesh(new THREE.SphereGeometry(0.2 ), new THREE.MeshPhysicalMaterial()))
-            for(let i=0; i<coefficients.length; i++) {
-                const currWheel = new THREE.Mesh(new THREE.SphereGeometry(0.2   ), new THREE.MeshPhysicalMaterial())
-                wheels[i].add(currWheel)
+    public makeSpiroWheels(coefficients:Array<coefficient>):Array<THREE.Mesh> {
+        let wheels:Array<THREE.Mesh> = [];
+        wheels.push(new THREE.Mesh(new THREE.SphereGeometry(0.2 ), new THREE.MeshPhysicalMaterial()))
+        for(let i=0; i<coefficients.length; i++) {
+            const currWheel = new THREE.Mesh(new THREE.SphereGeometry(0.2   ), new THREE.MeshPhysicalMaterial())
+            wheels[i].add(currWheel)
 
-                const ring = new THREE.Mesh(
-                    new THREE.TorusGeometry(coefficients[i].an.mag(), 0.08*(1/(i+1)), 12, 100),
-                    // new THREE.RingGeometry(coefficients[i].an.mag(), coefficients[i].an.mag()+0.05, 100),
-                    new THREE.MeshBasicMaterial({color: 0x919191, side:THREE.DoubleSide, transparent: true})
-                )
-                wheels[i].add(ring)
+            const ring = new THREE.Mesh(
+                new THREE.TorusGeometry(coefficients[i].an.mag(), 0.08*(1/(i+1)), 12, 100),
+                // new THREE.RingGeometry(coefficients[i].an.mag(), coefficients[i].an.mag()+0.05, 100),
+                new THREE.MeshBasicMaterial({color: 0x919191, side:THREE.DoubleSide, transparent: true})
+            )
+            wheels[i].add(ring)
 
-                wheels.push(currWheel)
+            wheels.push(currWheel)
 
-                const radius = new Line([], new THREE.Texture(), new THREE.Color(0xaaaaaa))
-                this.radii.push(radius)
-                wheels[i].add(radius.curve)
-            }
-            return wheels;
+            const radius = new Line([], new THREE.Texture(), new THREE.Color(0xaaaaaa))
+            this.radii.push(radius)
+            wheels[i].add(radius.curve)
         }
-
-
+        return wheels;
+    }
 
     public moveRadii(time:number, makeTrail:boolean=false, speed:number=2, thetaLength:number=2*Math.PI, thetaResolution:number=200) {
         for(let i=0; i<this.coeffs.length; i++) {
