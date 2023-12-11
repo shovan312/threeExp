@@ -11,9 +11,9 @@ export const complexCoeff:Array<coefficient> = [
 ]
 
 export const simpleCoeff:Array<coefficient> = [
-    {n:1, an:new complex(10, 0)},
-    {n:6, an:new complex(1,0)},
-    {n:-14, an:new complex(0,0)},
+    {n:-1, an:new complex(10, 0)},
+    {n:3, an:new complex(1,0)},
+    {n:5, an:new complex(5, -1)}
 ]
 
 export const squareCoeff:Array<coefficient> = [
@@ -22,4 +22,12 @@ export const squareCoeff:Array<coefficient> = [
     {n:1, an:new complex(-4.0528541922,0)},
     {n:5, an:new complex(-0.16211416769,0)},
     {n:9, an:new complex(-0.05003523694,0)},
+]
+
+export const clockCoeff:Array<coefficient> = [
+    {n: 1, an: new complex(16, 0)},
+    {n: -3, an: new complex(10, 0)},
+    {n: 9, an: new complex(8, 0)},
+    {n: -27, an: new complex(2, 0)},
+    {n: -2, an: new complex(3, 0)},
 ]

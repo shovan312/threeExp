@@ -12,12 +12,13 @@ export class Spiro {
     coeffs:Array<coefficient> = []
     wheels: Array<THREE.Mesh> = []
     radii: Array<Line> = []
+    rings: Array<THREE.Mesh> = []
 
     constructor(coeffs: Array<coefficient>, thetaStart:number = 0, thetaEnd:number = 2*Math.PI) {
         this.coeffs = coeffs
         let points = this.getSpiroPoints(coeffs, thetaStart, thetaEnd);
         this.line = new Line(points)
-        this.wheels = this.makeSpiroWheels(coeffs)
+        this.makeSpiroWheels(coeffs)
     }
 
     public getSpiroPoints(coefficients:Array<coefficient>, thetaStart:number=0, thetaEnd:number=2*Math.PI, thetaResolution:number=200):Array<THREE.Vector3>{
@@ -29,35 +30,36 @@ export class Spiro {
             for(let j=0; j<coefficients.length; j++) {
                 const z = coefficients[j].an
                 r = r.add(z.mult(I.scalarMult(coefficients[j].n*theta).exp()))
-                // wheels[j+1].position.z = r.mag()*Math.sin(theta)
             }
-
             // spiroPoints.push(new THREE.Vector3(r.real, r.img, r.mag()*Math.sin(theta)))
             spiroPoints.push(new THREE.Vector3(r.real, r.img, 0))
         }
         return spiroPoints;
     }
 
-    public makeSpiroWheels(coefficients:Array<coefficient>):Array<THREE.Mesh> {
-        let wheels:Array<THREE.Mesh> = [];
-        wheels.push(new THREE.Mesh(new THREE.SphereGeometry(0.2 ), new THREE.MeshPhysicalMaterial()))
+    public makeSpiroWheels(coefficients:Array<coefficient>) {
+        let wheels:Array<THREE.Mesh> = [], radii:Array<Line> = [], rings:Array<THREE.Mesh> = [];
+        wheels.push(new THREE.Mesh(new THREE.SphereGeometry(0.06 ), new THREE.MeshPhysicalMaterial()))
         for(let i=0; i<coefficients.length; i++) {
-            const currWheel = new THREE.Mesh(new THREE.SphereGeometry(0.2   ), new THREE.MeshPhysicalMaterial())
-            wheels[i].add(currWheel)
+            const cursor = new THREE.Mesh(new THREE.SphereGeometry(0.06   ), new THREE.MeshPhysicalMaterial())
+            wheels.push(cursor)
+            wheels[i].add(cursor)
 
             const ring = new THREE.Mesh(
                 new THREE.TorusGeometry(coefficients[i].an.mag(), 0.08*(1/(i+1)), 12, 100),
                 // new THREE.RingGeometry(coefficients[i].an.mag(), coefficients[i].an.mag()+0.05, 100),
                 new THREE.MeshBasicMaterial({color: 0x919191, side:THREE.DoubleSide, transparent: true})
             )
+            rings.push(ring)
             wheels[i].add(ring)
-            wheels.push(currWheel)
 
-            const radius = new Line([], new THREE.Texture(), new THREE.Color(0xaaaaaa))
-            this.radii.push(radius)
+            const radius = new Line([new THREE.Vector3(0,0,0), new THREE.Vector3(coefficients[i].an.mag(),0,0)], new THREE.Texture(), new THREE.Color(0xaaaaaa))
+            radii.push(radius)
             wheels[i].add(radius.curve)
         }
-        return wheels;
+        this.wheels = wheels;
+        this.radii = radii;
+        this.rings = rings;
     }
 
     public moveRadii(time:number, makeTrail:boolean=false, speed:number=2, thetaLength:number=2*Math.PI, thetaResolution:number=200) {
@@ -69,29 +71,41 @@ export class Spiro {
                 this.coeffs[i].an.mag()*Math.sin(theta),
                 0
                 )
-            // this.radii[i].curve.rotation.z = theta
+
+            this.rings[i].geometry.dispose();
+            this.rings[i].geometry = new THREE.TorusGeometry(this.coeffs[i].an.mag(), 0.08*(1/(i+1)), 12, 100)
+
+            this.radii[i].curve.geometry.dispose()
+            const nextRadius = new Line([new THREE.Vector3(0,0,0), new THREE.Vector3(this.coeffs[i].an.mag(),0,0)])
+            this.radii[i].curve.geometry = nextRadius.curve.geometry;
+            this.radii[i].curve.rotation.z = theta
+
             //adds lag but works
-            this.radii[i].points = [
-                this.wheels[i].getWorldPosition(new THREE.Vector3()),
-                this.wheels[i+1].getWorldPosition(new THREE.Vector3())
-            ]
-            const selectedObj = this.wheels[0].getObjectByName(this.radii[i].curve.name)
-            if(selectedObj != undefined) {
-                // console.log(selectedObj)
-                this.wheels[0].remove(selectedObj)
-                this.radii[i].curve.geometry.dispose()
-                this.wheels[0].add(this.radii[i].update())
-            }
+            // this.radii[i].points = [
+            //     this.wheels[i].getWorldPosition(new THREE.Vector3()),
+            //     this.wheels[i+1].getWorldPosition(new THREE.Vector3())
+            // ]
+            // const selectedObj = this.wheels[0].getObjectByName(this.radii[i].curve.name)
+            // if(selectedObj != undefined) {
+            //     // console.log(selectedObj)
+            //     this.wheels[0].remove(selectedObj)
+            //     this.radii[i].curve.geometry.dispose()
+            //     this.wheels[0].add(this.radii[i].update())
+            // }
         }
 
         if (makeTrail && this.line!=undefined) {
-            // this.line.points = this.getSpiroPoints(this.coeffs, 0, 2*Math.PI)
             this.line.points = this.getSpiroPoints(this.coeffs, Math.max(0, time*speed - thetaLength), time*speed, thetaResolution)
-            this.wheels[0].remove(this.line.curve)
-            this.line.curve.geometry.dispose()
-            this.wheels[0].add(this.line.update())
         }
+        else {
+            this.line.points = this.getSpiroPoints(this.coeffs, 0, 2*Math.PI, thetaResolution)
+        }
+        this.wheels[0].remove(this.line.curve)
+        this.line.curve.geometry.dispose()
+        this.wheels[0].add(this.line.update())
     }
+
+    public moveRadii2(time:number) {}
 
     public update() {
 
