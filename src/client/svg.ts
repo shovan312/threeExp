@@ -4,7 +4,7 @@ import {Line} from "./line";
 import {coefficient, Spiro} from "./spiro";
 import {getCenterOfMass, getCoeffs} from "./client";
 
-const fourierResolution = 17;
+const fourierResolution = 13;
 
 const svgLoader:SVGLoader = new SVGLoader();
 export function loadSvg( path:string){
