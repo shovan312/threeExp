@@ -15,26 +15,39 @@ import {UnrealBloomPass} from "three/examples/jsm/postprocessing/UnrealBloomPass
 import {coefficient} from "./spiro";
 import {scene, clock, stats, camera, renderer, orbitControls, textureLoader} from "./setup";
 import {loadSvg, processSVGData} from "./svg";
-import {clockCoeff, simpleCoeff} from "./coefficients";
+import {clockCoeff, complexCoeff, complexCoeff0, simpleCoeff, squareCoeff, zeroCoeff} from "./coefficients";
 
 /////////////////////////
 let gridHelper:GridHelper, axesHelper:AxesHelper, axes:Array<AxesHelper>;
 makeBackgroundObjects();
 ////////////////////////
-let flowText:Texture=new Texture(), nrmlText0:Texture=new Texture(), nrmlText1:Texture=new Texture(), cubeTexture:CubeTexture;
+let flowText:Texture=new Texture(), nrmlText0:Texture=new Texture(), nrmlText1:Texture=new Texture(), cubeTexture:CubeTexture, rainbowText:Texture=new Texture();
 loadTextures()
 ///////////////////////////////
 // makeWater()
 // makeGlassSphere()
 ////////////////
 let svgCoeffs:Array<coefficient>, svgSpirograph:Spiro|undefined;
-const loadedSvg = await loadSvg('svg/man.svg') as SVGResult;
+const loadedSvg = await loadSvg('svg/demon.svg') as SVGResult;
 svgCoeffs = processSVGData(loadedSvg) as Array<coefficient>;
-svgSpirograph = new Spiro(svgCoeffs);
+svgSpirograph = new Spiro(svgCoeffs,0,2*Math.PI,rainbowText);
 
-let spiroCoeff:Array<coefficient> = clockCoeff
-let spirograph = new Spiro(spiroCoeff)
-scene.add(spirograph.wheels[0])
+// let spiroCoeff:Array<coefficient> = complexCoeff
+// let spirograph = new Spiro(spiroCoeff, 0, 2*Math.PI, rainbowText)
+// scene.add(spirograph.wheels[0])
+
+let spiroCoeffs:Array<Array<coefficient>> = []
+for(let i=0; i<12; i++) spiroCoeffs.push(zeroCoeff)
+let spirographs:Array<Spiro> = []
+for(let i=0; i<spiroCoeffs.length; i++) {
+    let k = 0.5+0.5*(i/(spiroCoeffs.length-1))
+    let newCoeff = spiroCoeffs[i].map(x => {return {n: x.n, an: new complex(x.an.real + k, x.an.img)}});
+    let spirograph:Spiro = new Spiro(newCoeff, 0, 2*Math.PI, rainbowText);
+    spirographs.push(spirograph);
+    scene.add(spirograph.wheels[0])
+}
+
+
 //////
 
 document.addEventListener('keydown', (e) => keyPressed(e));
@@ -42,6 +55,9 @@ function keyPressed(e:KeyboardEvent) {
     if (e.code === "KeyW") wPressed = !wPressed
     if (e.code === "KeyS") sPressed = !sPressed
     if (e.code === "KeyD") dPressed = !dPressed
+    if (e.code === "KeyC") {
+        cPressed = !cPressed
+    }
     if (e.code === "KeyB") {
         // bPressed = !bPressed
         bPressed = true
@@ -51,7 +67,9 @@ function keyPressed(e:KeyboardEvent) {
 let wPressed:boolean = false;
 let dPressed:boolean = false
 let bPressed:boolean = false
+let cPressed:boolean = false
 let bCounter:number = 0
+let svgCoeffsMem:Array<coefficient> = svgCoeffs;
 let svgLoaded:boolean = false;
 let svgUpdated:boolean = false;
 let thetaResolution:number=400;
@@ -62,50 +80,70 @@ let panCam:boolean = false;
 let sTime:number = 0;
 let lastCamTheta:number = 0;
 let camTheta:number = 0;
-
 function animate() {
     let time:number = clock.getElapsedTime()*1;
     gridHelper.rotation.y = time
 
     let k=1/2
     thetaResolution = Math.max(Math.min(1400, thetaResolution + thetaResolutionDelta), 3)
+
     // if (svgSpirograph == undefined) {
     //     renderer.render(scene, camera); return;
     // }
     // if (!svgLoaded) {
-    //     scene.add(svgSpirograph.wheels[0]); svgLoaded = true
-
+    //     scene.add(svgSpirograph.wheels[0]); svgLoaded = true;
+    //     for(let i=0; i<svgSpirograph.rings.length; i++) {
+    //         if(i%2) {
+    //             //@ts-ignore
+    //             svgSpirograph.rings[i].material.color = new THREE.Color(0xbbbbbb)
+    //         }
+    //         else {
+    //             //@ts-ignore
+    //             svgSpirograph.rings[i].material.color = new THREE.Color(0x111111)
+    //         }
+    //     }
+    //
     // }
-
-    // svgSpirograph.moveRadii(time, false, k, 2*Math.PI, Math.max(7, Math.floor(thetaResolution)))
+    // svgSpirograph.moveRadii(time, k)
+    // svgSpirograph.drawTrail(time, true, k, 2*Math.PI, Math.max(7, Math.floor(thetaResolution)));
     // // followCursor(svgSpirograph.wheels, orbitControls, camera, time, 3)
     // enableSceneChange(svgSpirograph, renderer, camera, time)
     //
-    // // if(k*time > 2*Math.PI) {
-    //     // let transformScale = 0.995
-    //     svgSpirograph.coeffs = tranformCoeffs(svgSpirograph.coeffs,spirograph.coeffs, 1);//Math.min(1, (k*time-2*Math.PI)/1000))
+    // if(k*time > 2*Math.PI) {
+    //     // svgSpirograph.coeffs = tranformCoeffs(svgSpirograph.coeffs,spirograph.coeffs, Math.min(1, (k*time-2*Math.PI)/1000))
     //     if(!svgUpdated) {
     //         // scene.remove(svgSpirograph.wheels[0])
-    //         // scene.add(svgSpirograph.update())
+    //         // scene.add( svgSpirograph.update())
     //         if ((k*time-2*Math.PI)/1000 > 0.01) {
-    //             console.log("flipping")
     //             svgUpdated = true
     //         }
     //     }
-    // // }
+    // }
 
+    for(let i=0; i<spirographs.length; i++) {
+    //     for(let i=0; i<3; i++) {
+        spirographs[i].moveRadii(time, 1/2)
+        spirographs[i].drawTrail(time, true, 1/2, 200*Math.PI, Math.max(7, Math.floor(thetaResolution)), i)
+        enableSceneChange(spirographs[i], renderer, camera, time)
 
-    spirograph.moveRadii(time, true, 1/2, 2*Math.PI, Math.max(7, Math.floor(thetaResolution)))
-    enableSceneChange(spirograph, renderer, camera, time)
+    }
+
     // followCursor(spirograph.wheels, orbitControls, camera, time, 3)
     // renderer.render(scene, camera);
     stats.update()
-
+    //
     if(bPressed) {
-        if(bCounter>0)
-            spirograph.coeffs[3].an = spirograph.coeffs[3].an.add(new complex(0,-0.01*Math.sin(time)))
-        if(bCounter>1)
-            spirograph.coeffs[4].an = spirograph.coeffs[4].an.add(new complex(0.08*Math.cos(time) - 0.02, 0.01*Math.cos(time/2)))
+        if(bCounter==1){
+            spirographs.forEach(spirograph =>
+            spirograph.coeffs[3].an = spirograph.coeffs[3].an.add(new complex(0,-0.01*Math.sin(2*time))))
+        }
+        // if(bCounter>1){
+        //     //@ts-ignore
+        //     spirograph.rings[2].material.color = new THREE.Color(0xff0000)
+        //     spirograph.coeffs[2].an = new complex(
+        //         svgCoeffsMem[2].an.real + 0.02*Math.sin(1.2*time),
+        //         svgCoeffsMem[2].an.img + 0.01*Math.sin(2.2*time))
+        // }
     }
 
     if (sPressed) {
@@ -125,6 +163,9 @@ function animate() {
 
     // console.log(renderer.info.memory.geometries)
     requestAnimationFrame(animate)
+
+    // scene.rotation.y += 0.01
+    // scene.rotation.x += 0.005
 }
 animate()
 // renderer.setAnimationLoop(animate);
@@ -132,8 +173,9 @@ animate()
 function enableSceneChange(spiro:Spiro, renderer:THREE.Renderer, camera:THREE.PerspectiveCamera | THREE.OrthographicCamera, time:number) {
     if (wPressed) {
         let sawWave = 2*Math.abs(time/15 - Math.floor(time/15) - 1/2)
-        spiro.line.options.color = new THREE.Color(sawWave, 0.5 - 0.25*sawWave, 1-sawWave)
+        // spiro.line.options.color = new THREE.Color(sawWave, 0.5 - 0.25*sawWave, 1-sawWave)
         // spiro.line.options.color = 0x00fc69
+        spiro.line.options.color = 0xffffff
         renderer.render(spiro.wheels[0], camera);
     }
     else {
@@ -229,6 +271,7 @@ function loadTextures() {
     flowText = textureLoader.load('./Water_1_M_Flow.jpg');
     nrmlText0 = textureLoader.load('./Water_1_M_Normal.jpg');
     nrmlText1 = textureLoader.load('./Water_2_M_Normal.jpg');
+    rainbowText = textureLoader.load('./rainbow.jpg')
 
     cubeTexture = new THREE.CubeTextureLoader().load([
         'paperSquare.png',

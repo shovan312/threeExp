@@ -10,11 +10,11 @@ export class Line {
     texture: THREE.Texture = new Texture();
     options: any = {}
 
-    constructor(points: Array<THREE.Vector3>=[], texture:THREE.Texture=new THREE.Texture(), color:THREE.Color=new THREE.Color(0x000000)) {
+    constructor(points: Array<THREE.Vector3>=[], texture:THREE.Texture=new THREE.Texture(), color:THREE.Color=new THREE.Color(0x000000), lineWidth:number=0.1, useMap:boolean=false) {
         this.texture = texture
         this.options = {
             map: this.texture,
-            useMap: false,
+            useMap: useMap,
             color: color,
             opacity: 1,//params.strokes ? .5 : 1,
             dashArray: 0.05,
@@ -22,8 +22,8 @@ export class Line {
             dashRatio: 0,
             // resolution: resolution,
             sizeAttenuation: false,
-            lineWidth: 0.1,
-            // depthWrite: false,
+            lineWidth: lineWidth,
+            depthWrite: false,
             // depthTest: !false, //useMap
             // alphaTest: false ? .5 : 0, //useMap
             transparent: true,
@@ -38,7 +38,8 @@ export class Line {
         const line = new MeshLine();
 
         // @ts-ignore
-        line.setGeometry(geometry, function(p) { return 1/70})//*Math.sin(p*2*Math.PI)});
+        line.setGeometry(geometry, function(p) { return 1/10})
+        // line.setGeometry(geometry, function(p) { return 1/10})//*Math.sin(p*2*Math.PI)});
         let color = new THREE.Color(0xee5511);
         this.material = new MeshLineMaterial(this.options);
         this.curve = new THREE.Mesh(line, this.material);

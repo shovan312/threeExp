@@ -67,7 +67,7 @@ function getLights():Array<THREE.Light>{
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
-renderer.setClearColor(0x212121);
+renderer.setClearColor(0x515151);
 document.body.appendChild(renderer.domElement)
 
 stats.showPanel(2)

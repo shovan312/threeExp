@@ -1,13 +1,27 @@
 import {coefficient} from "./spiro";
 import {complex} from "ts-complex-numbers";
 
-export const complexCoeff:Array<coefficient> = [
+export const complexCoeff0:Array<coefficient> = [
     {n:3, an:new complex(10, 8/3)},
     {n:-1, an:new complex(8,0)},
-    {n:-7, an:new complex(4,10/3)},
+    {n:-9, an:new complex(4,10/3)},
     {n:13, an:new complex(5/3, 2/3)},
-    {n:-29, an:new complex(0.8, 0)},
-    {n:49, an:new complex(0.1, 0.2)}
+    // {n:-29, an:new complex(0.8, 0)},
+    // {n:49, an:new complex(0.1, 0.2)}
+]
+
+export const complexCoeff:Array<coefficient> = [
+    {n:4, an:new complex(10, 8/3)},
+    {n:-1, an:new complex(4,0)},
+    {n:9, an:new complex(2,10/3)},
+    {n:-11, an:new complex(5/3, 2/3)},
+    {n:20, an:new complex(1/3, 0)},
+    // {n:-9, an:new complex(0.8, 0)},
+    // {n:49, an:new complex(0.1, 0.2)}
+]
+
+export const zeroCoeff:Array<coefficient> = [
+    // {n:74, an:new complex(30, 0)},
 ]
 
 export const simpleCoeff:Array<coefficient> = [
