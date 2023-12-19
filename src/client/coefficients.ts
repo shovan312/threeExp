@@ -21,7 +21,9 @@ export const complexCoeff:Array<coefficient> = [
 ]
 
 export const zeroCoeff:Array<coefficient> = [
-    // {n:74, an:new complex(30, 0)},
+    {n:0, an:new complex(0,0)}
+    // {n:4, an:new complex(6, 0)},
+    // {n:2, an:new complex(6, 0)},
 ]
 
 export const simpleCoeff:Array<coefficient> = [

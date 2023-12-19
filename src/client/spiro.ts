@@ -16,12 +16,13 @@ export class Spiro {
     radii: Array<Line> = []
     rings: Array<THREE.Mesh> = []
     texture:Texture
+    history:Array<THREE.Vector3>=[]
 
 
     constructor(coeffs: Array<coefficient>, thetaStart:number = 0, thetaEnd:number = 2*Math.PI, texture:Texture=new Texture()) {
         this.coeffs = coeffs
         let points = this.getSpiroPoints(coeffs, thetaStart, thetaEnd);
-        this.line = new Line(points, texture, undefined, 0.01, true)
+        this.line = new Line(points, texture, undefined, 0.03, true)
         this.makeSpiroWheels(coeffs)
         this.texture = texture
     }
@@ -36,8 +37,8 @@ export class Spiro {
                 const z = coefficients[j].an
                 r = r.add(z.mult(I.scalarMult(coefficients[j].n*theta).exp()))
             }
-            spiroPoints.push(new THREE.Vector3(r.real, r.img, r.mag()*Math.sin(theta)))
-            // spiroPoints.push(new THREE.Vector3(r.real, r.img, 0))
+            // spiroPoints.push(new THREE.Vector3(r.real, r.img, r.mag()*Math.sin(theta)*Math.sin(theta)))
+            spiroPoints.push(new THREE.Vector3(r.real, r.img, 0))
         }
         return spiroPoints;
     }
@@ -85,6 +86,13 @@ export class Spiro {
             this.radii[i].curve.geometry = nextRadius.curve.geometry;
             this.radii[i].curve.rotation.z = theta
 
+            if(i == this.coeffs.length-1) {
+                if(time > 1 && time < 1.2) {
+                    // console.log(...this.getSpiroPoints(this.coeffs, time*speed, time*speed, 0))
+                }
+                this.history.push(...this.getSpiroPoints(this.coeffs, time*speed, time*speed, 1))
+            }
+
             //adds lag but works
             // this.radii[i].points = [
             //     this.wheels[i].getWorldPosition(new THREE.Vector3()),
@@ -103,6 +111,7 @@ export class Spiro {
     public drawTrail(time:number, makeTrail:boolean=false, speed:number=2, thetaLength:number=2*Math.PI, thetaResolution:number=200,i:number=0) {
         if (makeTrail && this.line!=undefined) {
             this.line.points = this.getSpiroPoints(this.coeffs, Math.max(0, time*speed - thetaLength), time*speed, thetaResolution,i)
+            // this.line.points = this.history
         }
         else {
             this.line.points = this.getSpiroPoints(this.coeffs, 0, 2*Math.PI, thetaResolution,i)
@@ -113,7 +122,7 @@ export class Spiro {
     }
 
     public update() {
-
+        this.makeSpiroWheels(this.coeffs)
     }
 }
 

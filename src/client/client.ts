@@ -27,21 +27,21 @@ loadTextures()
 // makeWater()
 // makeGlassSphere()
 ////////////////
-let svgCoeffs:Array<coefficient>, svgSpirograph:Spiro|undefined;
-const loadedSvg = await loadSvg('svg/demon.svg') as SVGResult;
-svgCoeffs = processSVGData(loadedSvg) as Array<coefficient>;
-svgSpirograph = new Spiro(svgCoeffs,0,2*Math.PI,rainbowText);
+// let svgCoeffs:Array<coefficient>, svgSpirograph:Spiro|undefined;
+// const loadedSvg = await loadSvg('svg/demon.svg') as SVGResult;
+// svgCoeffs = processSVGData(loadedSvg) as Array<coefficient>;
+// svgSpirograph = new Spiro(svgCoeffs,0,2*Math.PI,rainbowText);
 
 // let spiroCoeff:Array<coefficient> = complexCoeff
 // let spirograph = new Spiro(spiroCoeff, 0, 2*Math.PI, rainbowText)
 // scene.add(spirograph.wheels[0])
 
 let spiroCoeffs:Array<Array<coefficient>> = []
-for(let i=0; i<12; i++) spiroCoeffs.push(zeroCoeff)
+for(let i=0; i<7; i++) spiroCoeffs.push(zeroCoeff)
 let spirographs:Array<Spiro> = []
 for(let i=0; i<spiroCoeffs.length; i++) {
     let k = 0.5+0.5*(i/(spiroCoeffs.length-1))
-    let newCoeff = spiroCoeffs[i].map(x => {return {n: x.n, an: new complex(x.an.real + k, x.an.img)}});
+    let newCoeff = spiroCoeffs[i].map(x => {return {n: x.n, an: new complex(x.an.real, x.an.img)}});
     let spirograph:Spiro = new Spiro(newCoeff, 0, 2*Math.PI, rainbowText);
     spirographs.push(spirograph);
     scene.add(spirograph.wheels[0])
@@ -69,17 +69,30 @@ let dPressed:boolean = false
 let bPressed:boolean = false
 let cPressed:boolean = false
 let bCounter:number = 0
-let svgCoeffsMem:Array<coefficient> = svgCoeffs;
+// let svgCoeffsMem:Array<coefficient> = svgCoeffs;
 let svgLoaded:boolean = false;
 let svgUpdated:boolean = false;
-let thetaResolution:number=400;
-let thetaResolutionDelta:number=-0.1;
+let thetaResolution:number=1400;
+let thetaResolutionDelta:number=0.1;
 
 let sPressed:boolean = false;
 let panCam:boolean = false;
 let sTime:number = 0;
 let lastCamTheta:number = 0;
 let camTheta:number = 0;
+
+let updateSpiro = false;
+let randomCoeffs:Array<coefficient> = []
+for(let i=0; i<100; i++) {
+    let newN = Math.floor(3 - 6*(1/2 + 1/2*Math.random()))*5
+    randomCoeffs.push({
+        n: -1 + newN,
+        an: new complex(20/newN, 20/newN)
+    })
+}
+let prevTime:number=0;
+let changeCounter:number=0;
+
 function animate() {
     let time:number = clock.getElapsedTime()*1;
     gridHelper.rotation.y = time
@@ -121,11 +134,37 @@ function animate() {
     // }
 
     for(let i=0; i<spirographs.length; i++) {
-    //     for(let i=0; i<3; i++) {
         spirographs[i].moveRadii(time, 1/2)
-        spirographs[i].drawTrail(time, true, 1/2, 200*Math.PI, Math.max(7, Math.floor(thetaResolution)), i)
+        spirographs[i].drawTrail(time, true, 1/2, 4*Math.PI, Math.max(7, Math.floor(thetaResolution)), i)
         enableSceneChange(spirographs[i], renderer, camera, time)
 
+        if(updateSpiro && spirographs[i].coeffs.length < 100) {
+            spirographs[i].coeffs.push({n: 0, an: new complex(0,0)})
+            scene.remove(spirographs[i].wheels[0])
+            spirographs[i].update()
+            scene.add(spirographs[i].wheels[0])
+            if (i==spirographs.length-1) {
+                console.log("updated", Math.floor(time/2))
+                changeCounter++;
+                updateSpiro = false;
+            }
+        }
+
+        let k = 0.7+0.4*(i/(spiroCoeffs.length-1))
+        const changeParam = Math.pow(Math.min(1, (time/2-changeCounter)/2),1)
+        spirographs[i].coeffs[changeCounter] = {
+            n: THREE.MathUtils.lerp(0, randomCoeffs[changeCounter].n, 1),
+            an:new complex(
+                k*THREE.MathUtils.lerp(0, randomCoeffs[changeCounter].an.real, changeParam),
+                THREE.MathUtils.lerp(0, randomCoeffs[changeCounter].an.img, changeParam)
+            )
+        }
+    }
+
+    //stupid time hack to make code tick agnostic
+    if((time % 2) - (prevTime % 2) < 0) {
+        updateSpiro = true;
+        // console.log(spirographs[0].history)
     }
 
     // followCursor(spirograph.wheels, orbitControls, camera, time, 3)
@@ -133,10 +172,10 @@ function animate() {
     stats.update()
     //
     if(bPressed) {
-        if(bCounter==1){
-            spirographs.forEach(spirograph =>
-            spirograph.coeffs[3].an = spirograph.coeffs[3].an.add(new complex(0,-0.01*Math.sin(2*time))))
-        }
+        // if(bCounter==1){
+        //     spirographs.forEach(spirograph =>
+        //     spirograph.coeffs[3].an = spirograph.coeffs[3].an.add(new complex(0,-0.01*Math.sin(2*time))))
+        // }
         // if(bCounter>1){
         //     //@ts-ignore
         //     spirograph.rings[2].material.color = new THREE.Color(0xff0000)
@@ -166,6 +205,7 @@ function animate() {
 
     // scene.rotation.y += 0.01
     // scene.rotation.x += 0.005
+    prevTime = time;
 }
 animate()
 // renderer.setAnimationLoop(animate);
