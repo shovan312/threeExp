@@ -9,7 +9,7 @@ import {
     GridHelper,
     LineBasicMaterial,
     OrthographicCamera,
-    Texture
+    Texture, Vector2
 } from "three";
 import {Line} from "./line";
 import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise'
@@ -24,12 +24,12 @@ import {
     renderer,
     orbitControls,
     textureLoader,
-    camera2,
-    secondaryScene,
     lights
 } from "./setup";
 import {loadGltf} from "./gltf";
 import {fract} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
+import {Controls} from "./controls";
+import {LightControls} from "./lightcontrols";
 
 /////////////////////////
 let gridHelper:GridHelper, axesHelper:AxesHelper, axes:Array<AxesHelper>;
@@ -42,31 +42,9 @@ makeWater()
 // makeGlassSphere()
 ////////////////
 
-// scene.add(new THREE.AxesHelper(20))
-const gasStation = await loadGltf('gltf/gasStation/scene.gltf');
+let statueObj = await loadGltf('gltf/statue/scene.gltf')
 
-const planeWidth = 1.9, planeHeight = 2.4
-if(!(camera2 instanceof OrthographicCamera)) {
-    camera2.aspect = planeWidth/planeHeight
-    camera2.updateProjectionMatrix()
-}
-const renderTarget = new THREE.WebGLRenderTarget(planeWidth*512, planeHeight*512);
-const planeGeo  = new THREE.PlaneGeometry(planeWidth,planeHeight,2,2)
-
-const planeMat = new THREE.MeshPhysicalMaterial({
-    map: renderTarget.texture,
-    // wireframe:true
-})
-// planeMat.vertexColors = true
-const plane = new THREE.Mesh(planeGeo, planeMat)
-plane.position.z = 0.82
-plane.position.y = 1.15
-camera2.position.set(plane.position.x,  plane.position.y , plane.position.z)
-
-// scene.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,plane.position.y,0), 100))
-
-scene.add(plane)
-//////////////
+///////////////
 
 cubeTexture = new THREE.CubeTextureLoader().load([
     'paperSquare.png',
@@ -77,21 +55,21 @@ cubeTexture = new THREE.CubeTextureLoader().load([
     'paperSquare.png'
 ])
 cubeTexture.anisotropy = 0.1
-secondaryScene.background = cubeTexture
+scene.background = cubeTexture
 // makeGlassSphere()
-secondaryScene.add(new AxesHelper(10))
+scene.add(new AxesHelper(10))
 
 /////////////
-let monoRes = 20
+let monoRes = 200
 let monoGeo = new THREE.PlaneGeometry(10, 10, monoRes-1, monoRes-1);
 let monoMat = new THREE.MeshPhysicalMaterial({
     vertexColors:true,
     side:THREE.DoubleSide
 });
 let monoMesh = new THREE.Mesh(monoGeo, monoMat);
-secondaryScene.add(monoMesh)
-
+// scene.add(monoMesh)
 // adding a color attribute
+
 const monoPosLen = monoGeo.getAttribute('position').count;
 const mono_color_array = [];
 let i = 0;
@@ -101,104 +79,124 @@ while(i < monoPosLen){
 }
 const mono_color_attribute = new THREE.BufferAttribute(new Float32Array(mono_color_array), 3);
 monoGeo.setAttribute('color', mono_color_attribute);
-secondaryScene.add(new THREE.AmbientLight())
+// scene.add(new THREE.AmbientLight(0xffffff))
+
+///////////////
+
+let statueLoaded:boolean = false;
+
+let nearLight = new THREE.SpotLight(0xff0000, 100, 0, Math.PI/6)
+nearLight.position.y = 10
+nearLight.position.z = 5
+scene.add(nearLight)
+scene.add(nearLight.target)
+let nearLightHelper = new THREE.SpotLightHelper(nearLight)
+// scene.add(nearLightHelper)
+
+let rightLight = new THREE.SpotLight(0x00ff00, 100, 0, Math.PI/6)
+rightLight.position.y = 10
+rightLight.position.x = 5
+scene.add(rightLight)
+let rightLightHelper = new THREE.SpotLightHelper(rightLight)
+// scene.add(rightLightHelper)
+
+let farLight = new THREE.SpotLight(0x0000ff, 100, 0, Math.PI/6)
+farLight.position.y = 10
+farLight.position.z = -5
+scene.add(farLight)
+let farLightHelper = new THREE.SpotLightHelper(farLight)
+// scene.add(farLightHelper)
+
+let leftLight = new THREE.SpotLight(0xff00ff, 100, 0, Math.PI/6)
+leftLight.position.y = 10
+leftLight.position.x = -5
+scene.add(leftLight)
+let leftLightHelper = new THREE.SpotLightHelper(leftLight)
+// scene.add(leftLightHelper)
+
+let lightControls = new LightControls({i:farLight, j:leftLight, k:nearLight, l:rightLight})
 
 
 ///////////////
 
-document.addEventListener('keydown', (e) => keyPressed(e));
-function keyPressed(e:KeyboardEvent) {
-    if (e.code === "KeyW") wPressed = !wPressed
-    if (e.code === "KeyS") sPressed = !sPressed
-    if (e.code === "KeyD") dPressed = !dPressed
-    if (e.code === "KeyC") {
-        cPressed = !cPressed
-    }
-}
-let wPressed:boolean = false;
-let dPressed:boolean = false
-let cPressed:boolean = false
-let sPressed:boolean = false;
-let gltfLoaded:boolean = false;
-let twoPiTime:number = 0;
-let camSBool:boolean = true;
+const keysPressed = {}
+document.addEventListener('keydown', (event) => {
+        (keysPressed as any)[event.key.toLowerCase()] = true
+}, false);
+document.addEventListener('keyup', (event) => {
+    (keysPressed as any)[event.key.toLowerCase()] = false
+}, false);
 
+let controls = new Controls(orbitControls, camera);
 
+//////////////
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
-    if(gltfLoaded == false && gasStation != undefined) {
-        gltfLoaded = true;
-        // @ts-ignore
-        scene.add(gasStation.scene as THREE.Group)
+    if(statueObj!=undefined  && !statueLoaded) {
+        //@ts-ignore
+        let statue = statueObj.scene as THREE.Group
+        scene.add(statue)
+        statue.position.set(3,3.5,18)
+        statueLoaded = false
     }
 
-
-
-    // monoMesh.rotation.y += 0.005
     let monoCol = monoGeo.getAttribute('color').array
     for(let i=0; i<monoCol.length; i+=3) {
         const ind = Math.floor(i/3)
-        const uv = new THREE.Vector2(Math.floor(ind/monoRes) / monoRes, ind%monoRes / monoRes)
-        uv.add(new THREE.Vector2(-0.5, -0.5)).multiplyScalar(2)
-        let r = uv.length();
-        let col = new THREE.Vector3(-1,0,-1)
-        col.add(new THREE.Vector3(Math.sin(r*16 - time*3), 0 ,Math.sin(r*16 - time*2)))
+        const uv = new THREE.Vector2(ind%monoRes / (monoRes-1), Math.floor(ind/monoRes) / (monoRes-1))
 
-        let k = 3
-        uv.x = uv.x%(1/k)
-        uv.y = uv.y%(1/k)
-        let r2 = uv.add(new THREE.Vector2(0.5*Math.sin(time),0.5*Math.cos(time))).length()
-        col.add(new THREE.Vector3(Math.sin(r2*16-time), Math.sin(r2*16-time), 0.7))
+        // if(time > 1 && time < 1.02) console.log(ind, uv)
 
-        monoCol[i + 0] = 10*col.x
-        monoCol[i + 1] = 10*col.y
-        monoCol[i + 2] = 10*col.z
+        let col = getColor(uv, time);
+
+        monoCol[i + 0] = col.x
+        monoCol[i + 1] = col.y
+        monoCol[i + 2] = col.z
     }
     monoGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(monoCol), 3))
 
-    if(scene.rotation.y < 2*Math.PI) {
-        scene.rotation.y += 0.005
-        twoPiTime = time
-
-        let t = 2*Math.PI - scene.rotation.y
-        camera.position.y = Math.max(plane.position.y + 0.5, 2.3*t )
-        camera.position.z = Math.max(15.39, 10*t)
-    }
-    else {
-        plane.position.set(plane.position.x,plane.position.y,Math.max(0.83, Math.min((time-twoPiTime)*1.3, 14)))
-
-        camera.position.x = 0.259
-        camera.position.y = plane.position.y + 0.5
-        orbitControls.zoomSpeed=0.02
-    }
-
-    if (sPressed) {
-        if (camSBool) {
-            // camera.position.z = 8.5
-            camSBool=false
-        }
-        renderer.render(secondaryScene, camera)
-    }
-    else {
-        if(scene.rotation.y > Math.PI/2) {
-            renderer.setRenderTarget(renderTarget);
-            renderer.render(secondaryScene, camera2);
-            renderer.setRenderTarget(null);
-        }
-        renderer.render(scene, camera)
-    }
-
-    camera2.rotation.set(camera.rotation.x, camera.rotation.y, camera.rotation.z)
-    camera2.position.set(plane.position.x, plane.position.y, plane.position.z+10)
+    controls.updateCamera(camera, orbitControls, keysPressed, clock.getDelta())
+    lightControls.updateLights(keysPressed, time)
 
     camera.updateProjectionMatrix()
-
     stats.update()
+    renderer.render(scene, camera)
     requestAnimationFrame(animate)
 }
 animate()
 // renderer.setAnimationLoop(animate);
+
+///////////
+
+
+
+function getColor(uv:THREE.Vector2, time:number):THREE.Vector3{
+    let col = new THREE.Vector3(0,0,0)
+    // if(time > 1 && time < 1.02) console.log(uv.x)
+    uv.add(new THREE.Vector2(-0.5, -0.5))
+    for(let i=0; i<1; i++) {
+        uv.multiplyScalar(i+1)
+        let r = uv.length();
+        r = Math.sin(40*r - 3*time)
+        col.add(new THREE.Vector3(r,0,0));
+
+
+        let k = 2
+        uv.x = uv.x%(1/k)
+        uv.y = uv.y%(1/k)
+        let r2 = 0
+        r2 = uv.add(new THREE.Vector2(0.5*Math.sin(time),0.5*Math.cos(time))).length()
+        col.add(new THREE.Vector3(Math.sin(r2*16-time), Math.sin(r2*16-time), 0.7))
+    }
+
+    // let col = new THREE.Vector3(0,0,0)
+    // uv.add(new THREE.Vector2(-0.5, -0.5)).multiplyScalar(2)
+
+    return col.multiplyScalar(4);
+}
+
+
 
 //////////
 
@@ -289,7 +287,7 @@ function makeGlassSphere() {
 
     let sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), glassMaterial);
     sphere.castShadow = true;
-    secondaryScene.add(sphere);
+    scene.add(sphere);
     sphere.position.z = -2
     sphere.position.y = 2
 }

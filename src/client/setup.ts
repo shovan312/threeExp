@@ -15,9 +15,7 @@ export const
     camera = getCamera("pers"),
     orbitControls = new OrbitControls(camera, renderer.domElement),
     textureLoader = new THREE.TextureLoader(),
-    lights = getLights(),
-    secondaryScene = new THREE.Scene(),
-    camera2 = getCamera("pers")
+    lights = getLights()
 
 function getCamera(type:string): THREE.PerspectiveCamera | THREE.OrthographicCamera{
     let camera;
@@ -45,8 +43,8 @@ function getLights():Array<THREE.Light>{
     const pointLight2 = new THREE.PointLight(0xffffff, 100);
     pointLight1.position.z = 15
     pointLight2.position.z = -15
-    scene.add(pointLight1)
-    scene.add(pointLight2)
+    // scene.add(pointLight1)
+    // scene.add(pointLight2)
 
     const pointLights:Array<THREE.Light> = []
     for(let i=0; i<10;i++) {
