@@ -2,20 +2,34 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import { GUI } from 'dat.gui'
 import { Water } from 'three/examples/jsm/objects/Water2.js';
-import {AxesHelper, ColorRepresentation, CubeTexture, GridHelper, LineBasicMaterial, Texture} from "three";
+import {
+    AxesHelper,
+    ColorRepresentation,
+    CubeTexture,
+    GridHelper,
+    LineBasicMaterial,
+    OrthographicCamera,
+    Texture
+} from "three";
 import {Line} from "./line";
 import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise'
 import {SVGLoader, SVGResult} from 'three/examples/jsm/loaders/SVGLoader';
-import {complex} from 'ts-complex-numbers';
 import { Spiro } from './spiro';
 import Stats from 'three/examples/jsm/libs/stats.module'
-import {RenderPass} from "three/examples/jsm/postprocessing/RenderPass";
-import {EffectComposer} from "three/examples/jsm/postprocessing/EffectComposer";
-import {UnrealBloomPass} from "three/examples/jsm/postprocessing/UnrealBloomPass";
-import {coefficient} from "./spiro";
-import {scene, clock, stats, camera, renderer, orbitControls, textureLoader} from "./setup";
-import {loadSvg, processSVGData} from "./svg";
-import {clockCoeff, complexCoeff, complexCoeff0, simpleCoeff, squareCoeff, zeroCoeff} from "./coefficients";
+import {
+    scene,
+    clock,
+    stats,
+    camera,
+    renderer,
+    orbitControls,
+    textureLoader,
+    camera2,
+    secondaryScene,
+    lights
+} from "./setup";
+import {loadGltf} from "./gltf";
+import {fract} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
 
 /////////////////////////
 let gridHelper:GridHelper, axesHelper:AxesHelper, axes:Array<AxesHelper>;
@@ -24,31 +38,73 @@ makeBackgroundObjects();
 let flowText:Texture=new Texture(), nrmlText0:Texture=new Texture(), nrmlText1:Texture=new Texture(), cubeTexture:CubeTexture, rainbowText:Texture=new Texture();
 loadTextures()
 ///////////////////////////////
-// makeWater()
+makeWater()
 // makeGlassSphere()
 ////////////////
-// let svgCoeffs:Array<coefficient>, svgSpirograph:Spiro|undefined;
-// const loadedSvg = await loadSvg('svg/demon.svg') as SVGResult;
-// svgCoeffs = processSVGData(loadedSvg) as Array<coefficient>;
-// svgSpirograph = new Spiro(svgCoeffs,0,2*Math.PI,rainbowText);
 
-// let spiroCoeff:Array<coefficient> = complexCoeff
-// let spirograph = new Spiro(spiroCoeff, 0, 2*Math.PI, rainbowText)
-// scene.add(spirograph.wheels[0])
+// scene.add(new THREE.AxesHelper(20))
+const gasStation = await loadGltf('gltf/gasStation/scene.gltf');
 
-let spiroCoeffs:Array<Array<coefficient>> = []
-for(let i=0; i<7; i++) spiroCoeffs.push(zeroCoeff)
-let spirographs:Array<Spiro> = []
-for(let i=0; i<spiroCoeffs.length; i++) {
-    let k = 0.5+0.5*(i/(spiroCoeffs.length-1))
-    let newCoeff = spiroCoeffs[i].map(x => {return {n: x.n, an: new complex(x.an.real, x.an.img)}});
-    let spirograph:Spiro = new Spiro(newCoeff, 0, 2*Math.PI, rainbowText);
-    spirographs.push(spirograph);
-    scene.add(spirograph.wheels[0])
+const planeWidth = 1.9, planeHeight = 2.4
+if(!(camera2 instanceof OrthographicCamera)) {
+    camera2.aspect = planeWidth/planeHeight
+    camera2.updateProjectionMatrix()
 }
+const renderTarget = new THREE.WebGLRenderTarget(planeWidth*512, planeHeight*512);
+const planeGeo  = new THREE.PlaneGeometry(planeWidth,planeHeight,2,2)
+
+const planeMat = new THREE.MeshPhysicalMaterial({
+    map: renderTarget.texture,
+    // wireframe:true
+})
+// planeMat.vertexColors = true
+const plane = new THREE.Mesh(planeGeo, planeMat)
+plane.position.z = 0.82
+plane.position.y = 1.15
+camera2.position.set(plane.position.x,  plane.position.y , plane.position.z)
+
+// scene.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,plane.position.y,0), 100))
+
+scene.add(plane)
+//////////////
+
+cubeTexture = new THREE.CubeTextureLoader().load([
+    'paperSquare.png',
+    'paperSquare.png',
+    'paperSquare.png',
+    'paperSquare.png',
+    'paperSquare.png',
+    'paperSquare.png'
+])
+cubeTexture.anisotropy = 0.1
+secondaryScene.background = cubeTexture
+// makeGlassSphere()
+secondaryScene.add(new AxesHelper(10))
+
+/////////////
+let monoRes = 20
+let monoGeo = new THREE.PlaneGeometry(10, 10, monoRes-1, monoRes-1);
+let monoMat = new THREE.MeshPhysicalMaterial({
+    vertexColors:true,
+    side:THREE.DoubleSide
+});
+let monoMesh = new THREE.Mesh(monoGeo, monoMat);
+secondaryScene.add(monoMesh)
+
+// adding a color attribute
+const monoPosLen = monoGeo.getAttribute('position').count;
+const mono_color_array = [];
+let i = 0;
+while(i < monoPosLen){
+    mono_color_array.push(i/monoPosLen,0,0);
+    i += 1;
+}
+const mono_color_attribute = new THREE.BufferAttribute(new Float32Array(mono_color_array), 3);
+monoGeo.setAttribute('color', mono_color_attribute);
+secondaryScene.add(new THREE.AmbientLight())
 
 
-//////
+///////////////
 
 document.addEventListener('keydown', (e) => keyPressed(e));
 function keyPressed(e:KeyboardEvent) {
@@ -58,232 +114,91 @@ function keyPressed(e:KeyboardEvent) {
     if (e.code === "KeyC") {
         cPressed = !cPressed
     }
-    if (e.code === "KeyB") {
-        // bPressed = !bPressed
-        bPressed = true
-        bCounter++
-    }
 }
 let wPressed:boolean = false;
 let dPressed:boolean = false
-let bPressed:boolean = false
 let cPressed:boolean = false
-let bCounter:number = 0
-// let svgCoeffsMem:Array<coefficient> = svgCoeffs;
-let svgLoaded:boolean = false;
-let svgUpdated:boolean = false;
-let thetaResolution:number=1400;
-let thetaResolutionDelta:number=0.1;
-
 let sPressed:boolean = false;
-let panCam:boolean = false;
-let sTime:number = 0;
-let lastCamTheta:number = 0;
-let camTheta:number = 0;
+let gltfLoaded:boolean = false;
+let twoPiTime:number = 0;
+let camSBool:boolean = true;
 
-let updateSpiro = false;
-let randomCoeffs:Array<coefficient> = []
-for(let i=0; i<100; i++) {
-    let newN = Math.floor(3 - 6*(1/2 + 1/2*Math.random()))*5
-    randomCoeffs.push({
-        n: -1 + newN,
-        an: new complex(20/newN, 20/newN)
-    })
-}
-let prevTime:number=0;
-let changeCounter:number=0;
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
-    gridHelper.rotation.y = time
 
-    let k=1/2
-    thetaResolution = Math.max(Math.min(1400, thetaResolution + thetaResolutionDelta), 3)
-
-    // if (svgSpirograph == undefined) {
-    //     renderer.render(scene, camera); return;
-    // }
-    // if (!svgLoaded) {
-    //     scene.add(svgSpirograph.wheels[0]); svgLoaded = true;
-    //     for(let i=0; i<svgSpirograph.rings.length; i++) {
-    //         if(i%2) {
-    //             //@ts-ignore
-    //             svgSpirograph.rings[i].material.color = new THREE.Color(0xbbbbbb)
-    //         }
-    //         else {
-    //             //@ts-ignore
-    //             svgSpirograph.rings[i].material.color = new THREE.Color(0x111111)
-    //         }
-    //     }
-    //
-    // }
-    // svgSpirograph.moveRadii(time, k)
-    // svgSpirograph.drawTrail(time, true, k, 2*Math.PI, Math.max(7, Math.floor(thetaResolution)));
-    // // followCursor(svgSpirograph.wheels, orbitControls, camera, time, 3)
-    // enableSceneChange(svgSpirograph, renderer, camera, time)
-    //
-    // if(k*time > 2*Math.PI) {
-    //     // svgSpirograph.coeffs = tranformCoeffs(svgSpirograph.coeffs,spirograph.coeffs, Math.min(1, (k*time-2*Math.PI)/1000))
-    //     if(!svgUpdated) {
-    //         // scene.remove(svgSpirograph.wheels[0])
-    //         // scene.add( svgSpirograph.update())
-    //         if ((k*time-2*Math.PI)/1000 > 0.01) {
-    //             svgUpdated = true
-    //         }
-    //     }
-    // }
-
-    for(let i=0; i<spirographs.length; i++) {
-        spirographs[i].moveRadii(time, 1/2)
-        spirographs[i].drawTrail(time, true, 1/2, 4*Math.PI, Math.max(7, Math.floor(thetaResolution)), i)
-        enableSceneChange(spirographs[i], renderer, camera, time)
-
-        if(updateSpiro && spirographs[i].coeffs.length < 100) {
-            spirographs[i].coeffs.push({n: 0, an: new complex(0,0)})
-            scene.remove(spirographs[i].wheels[0])
-            spirographs[i].update()
-            scene.add(spirographs[i].wheels[0])
-            if (i==spirographs.length-1) {
-                console.log("updated", Math.floor(time/2))
-                changeCounter++;
-                updateSpiro = false;
-            }
-        }
-
-        let k = 0.7+0.4*(i/(spiroCoeffs.length-1))
-        const changeParam = Math.pow(Math.min(1, (time/2-changeCounter)/2),1)
-        spirographs[i].coeffs[changeCounter] = {
-            n: THREE.MathUtils.lerp(0, randomCoeffs[changeCounter].n, 1),
-            an:new complex(
-                k*THREE.MathUtils.lerp(0, randomCoeffs[changeCounter].an.real, changeParam),
-                THREE.MathUtils.lerp(0, randomCoeffs[changeCounter].an.img, changeParam)
-            )
-        }
+    if(gltfLoaded == false && gasStation != undefined) {
+        gltfLoaded = true;
+        // @ts-ignore
+        scene.add(gasStation.scene as THREE.Group)
     }
 
-    //stupid time hack to make code tick agnostic
-    if((time % 2) - (prevTime % 2) < 0) {
-        updateSpiro = true;
-        // console.log(spirographs[0].history)
-    }
 
-    // followCursor(spirograph.wheels, orbitControls, camera, time, 3)
-    // renderer.render(scene, camera);
-    stats.update()
-    //
-    if(bPressed) {
-        // if(bCounter==1){
-        //     spirographs.forEach(spirograph =>
-        //     spirograph.coeffs[3].an = spirograph.coeffs[3].an.add(new complex(0,-0.01*Math.sin(2*time))))
-        // }
-        // if(bCounter>1){
-        //     //@ts-ignore
-        //     spirograph.rings[2].material.color = new THREE.Color(0xff0000)
-        //     spirograph.coeffs[2].an = new complex(
-        //         svgCoeffsMem[2].an.real + 0.02*Math.sin(1.2*time),
-        //         svgCoeffsMem[2].an.img + 0.01*Math.sin(2.2*time))
-        // }
+
+    // monoMesh.rotation.y += 0.005
+    let monoCol = monoGeo.getAttribute('color').array
+    for(let i=0; i<monoCol.length; i+=3) {
+        const ind = Math.floor(i/3)
+        const uv = new THREE.Vector2(Math.floor(ind/monoRes) / monoRes, ind%monoRes / monoRes)
+        uv.add(new THREE.Vector2(-0.5, -0.5)).multiplyScalar(2)
+        let r = uv.length();
+        let col = new THREE.Vector3(-1,0,-1)
+        col.add(new THREE.Vector3(Math.sin(r*16 - time*3), 0 ,Math.sin(r*16 - time*2)))
+
+        let k = 3
+        uv.x = uv.x%(1/k)
+        uv.y = uv.y%(1/k)
+        let r2 = uv.add(new THREE.Vector2(0.5*Math.sin(time),0.5*Math.cos(time))).length()
+        col.add(new THREE.Vector3(Math.sin(r2*16-time), Math.sin(r2*16-time), 0.7))
+
+        monoCol[i + 0] = 10*col.x
+        monoCol[i + 1] = 10*col.y
+        monoCol[i + 2] = 10*col.z
+    }
+    monoGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(monoCol), 3))
+
+    if(scene.rotation.y < 2*Math.PI) {
+        scene.rotation.y += 0.005
+        twoPiTime = time
+
+        let t = 2*Math.PI - scene.rotation.y
+        camera.position.y = Math.max(plane.position.y + 0.5, 2.3*t )
+        camera.position.z = Math.max(15.39, 10*t)
+    }
+    else {
+        plane.position.set(plane.position.x,plane.position.y,Math.max(0.83, Math.min((time-twoPiTime)*1.3, 14)))
+
+        camera.position.x = 0.259
+        camera.position.y = plane.position.y + 0.5
+        orbitControls.zoomSpeed=0.02
     }
 
     if (sPressed) {
-        panCam = !panCam; sPressed = false; sTime = time
-        if(panCam) lastCamTheta = camTheta
+        if (camSBool) {
+            // camera.position.z = 8.5
+            camSBool=false
+        }
+        renderer.render(secondaryScene, camera)
     }
-    if (panCam) {
-        camTheta = lastCamTheta + time - sTime;
-        const horRadius = 27, verRadius = 5, horVariation = 2 + Math.sin(camTheta)
-        camera.position.set(horRadius*horVariation*Math.sin(camTheta/5), verRadius*Math.sin(1/2*camTheta), horRadius*horVariation*Math.cos(camTheta/5))
-        camera.lookAt(0,0,0)
-    }
-    if (dPressed) {
-        thetaResolutionDelta *= -1
-        dPressed = false
+    else {
+        if(scene.rotation.y > Math.PI/2) {
+            renderer.setRenderTarget(renderTarget);
+            renderer.render(secondaryScene, camera2);
+            renderer.setRenderTarget(null);
+        }
+        renderer.render(scene, camera)
     }
 
-    // console.log(renderer.info.memory.geometries)
+    camera2.rotation.set(camera.rotation.x, camera.rotation.y, camera.rotation.z)
+    camera2.position.set(plane.position.x, plane.position.y, plane.position.z+10)
+
+    camera.updateProjectionMatrix()
+
+    stats.update()
     requestAnimationFrame(animate)
-
-    // scene.rotation.y += 0.01
-    // scene.rotation.x += 0.005
-    prevTime = time;
 }
 animate()
 // renderer.setAnimationLoop(animate);
-
-function enableSceneChange(spiro:Spiro, renderer:THREE.Renderer, camera:THREE.PerspectiveCamera | THREE.OrthographicCamera, time:number) {
-    if (wPressed) {
-        let sawWave = 2*Math.abs(time/15 - Math.floor(time/15) - 1/2)
-        // spiro.line.options.color = new THREE.Color(sawWave, 0.5 - 0.25*sawWave, 1-sawWave)
-        // spiro.line.options.color = 0x00fc69
-        spiro.line.options.color = 0xffffff
-        renderer.render(spiro.wheels[0], camera);
-    }
-    else {
-        spiro.line.options.color = 0x000000
-        renderer.render(scene, camera);
-    }
-}
-
-function followCursor(wheels:Array<THREE.Mesh>, orbitControls:OrbitControls, camera:THREE.PerspectiveCamera | THREE.OrthographicCamera, time:number, speed:number) {
-    const cursorPos = new THREE.Vector3()
-    wheels[wheels.length-2].getWorldPosition(cursorPos);
-    orbitControls.target = cursorPos.clone();
-    orbitControls.position0.set(0,0,0);
-    // orbitControls.object.position.set(cursorPos.x, cursorPos.y, cursorPos.z-5-time)
-    camera.position.set(cursorPos.x, cursorPos.y, Math.min(50, cursorPos.z+10+time*speed))
-    orbitControls.update()
-}
-
-function getIthCoeff(f: Array<complex>, n: number):complex {
-    let sum = new complex(0,0);
-    for(let i=0; i<f.length-1; i++) {
-        //e^(i*-n*theta)
-        const curr = f[i];
-        const I = new complex(0, 1);
-        const theta = 2*Math.PI*(i/f.length)
-        const exp = I.scalarMult(-n*theta).exp();
-        sum = sum.add(curr.mult(exp).scalarMult(2*Math.PI*(1/f.length)))
-    }
-    let ret = sum.scalarMult(1/(2*Math.PI))
-    if (ret.mag() < 0.01) { return new complex(0,0) } return ret;
-}
-
-function complexStr(z:complex) {
-    return z.real.toPrecision(4) + " " + z.img.toPrecision(4) + "i"
-}
-
-export function getCenterOfMass(points:Array<THREE.Vector3>) : THREE.Vector3 {
-    return points
-        .reduce(
-            (accumulator, currentValue) => accumulator.add(currentValue), new THREE.Vector3(0,0,0))
-        .multiplyScalar(1/points.length);
-}
-
-export function getCoeffs(points:Array<THREE.Vector3>, n:number):Array<coefficient> {
-    let ret = []
-    for(let i=1; i<=n; i++) {
-        ret.push({n:i, an: getIthCoeff(points.map(vec3 => new complex(vec3.x, vec3.y)), i)})
-        ret.push({n:-i, an: getIthCoeff(points.map(vec3 => new complex(vec3.x, vec3.y)), -i)})
-    }
-    return ret as Array<coefficient>;
-}
-
-function tranformCoeffs(source:Array<coefficient>, target:Array<coefficient>, t:number) {
-    let nSet:Set<number> = new Set();
-    source.forEach(coeff => nSet.add(coeff.n))
-    target.forEach(coeff => nSet.add(coeff.n))
-    let ret:Array<coefficient> = []
-    nSet.forEach(num => ret.push({n:num, an:new complex(0,0)}))
-    source.forEach(sCoeff => {
-        const sInd = ret.findIndex(c => c.n == sCoeff.n)
-        ret[sInd].an = ret[sInd].an.add(sCoeff.an.scalarMult(1-t))
-    })
-    target.forEach(tCoeff => {
-        const tInd= ret.findIndex(c => c.n == tCoeff.n)
-        ret[tInd].an = ret[tInd].an.add(tCoeff.an.scalarMult(t))
-    })
-    return ret
-}
 
 //////////
 
@@ -323,11 +238,12 @@ function loadTextures() {
     ])
 
     cubeTexture.anisotropy = 0.1
-    scene.background = cubeTexture
+    // scene.background = cubeTexture
 }
 
 function makeWater() {
     let waterGeometry = new THREE.PlaneGeometry( 400, 400 );
+    let waterHeight = 0.1
     let water = new Water( waterGeometry, {
         // color: '#42daf5',
         scale: 2,
@@ -340,7 +256,7 @@ function makeWater() {
     waterGeometry.computeVertexNormals();
     scene.add( water );
 
-    water.position.y = -0;
+    water.position.y = waterHeight;
     water.rotation.x = Math.PI * - 0.5;
 
     let water2 = new Water( waterGeometry, {
@@ -354,7 +270,7 @@ function makeWater() {
     } );
     scene.add( water2 );
 
-    water2.position.y = -0.1;
+    water2.position.y =waterHeight -0.1;
     water2.rotation.x = Math.PI *  0.5;
 }
 
@@ -373,5 +289,7 @@ function makeGlassSphere() {
 
     let sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), glassMaterial);
     sphere.castShadow = true;
-    scene.add(sphere);
+    secondaryScene.add(sphere);
+    sphere.position.z = -2
+    sphere.position.y = 2
 }

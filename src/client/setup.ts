@@ -14,7 +14,10 @@ export const
     renderer = new THREE.WebGLRenderer({antialias: true}),
     camera = getCamera("pers"),
     orbitControls = new OrbitControls(camera, renderer.domElement),
-    textureLoader = new THREE.TextureLoader()
+    textureLoader = new THREE.TextureLoader(),
+    lights = getLights(),
+    secondaryScene = new THREE.Scene(),
+    camera2 = getCamera("pers")
 
 function getCamera(type:string): THREE.PerspectiveCamera | THREE.OrthographicCamera{
     let camera;
@@ -24,7 +27,7 @@ function getCamera(type:string): THREE.PerspectiveCamera | THREE.OrthographicCam
             window.innerWidth / window.innerHeight,
             0.1,
             1000)
-        camera.position.set(0, 0, 58);
+        camera.position.set(0, 3, 15.39);
     }
     else {
         let aspect = window.innerWidth / window.innerHeight
@@ -38,18 +41,18 @@ function getCamera(type:string): THREE.PerspectiveCamera | THREE.OrthographicCam
 }
 
 function getLights():Array<THREE.Light>{
-    const pointLight1 = new THREE.PointLight(0x1aaffff, 100);
-    const pointLight2 = new THREE.PointLight(0x1aaffff, 100);
+    const pointLight1 = new THREE.PointLight(0xffffff, 100);
+    const pointLight2 = new THREE.PointLight(0xffffff, 100);
     pointLight1.position.z = 15
     pointLight2.position.z = -15
-    // scene.add(pointLight1)
-    // scene.add(pointLight2)
+    scene.add(pointLight1)
+    scene.add(pointLight2)
 
     const pointLights:Array<THREE.Light> = []
     for(let i=0; i<10;i++) {
         const pointLight = new THREE.SpotLight(0xffffff, 1000, 0, Math.PI/4, 0.5);
         pointLight.castShadow = true
-        scene.add(pointLight)
+        // scene.add(pointLight)
         pointLight.shadow.bias = -0.003
         pointLight.shadow.mapSize.width = 2048
         pointLight.shadow.mapSize.height = 2048
@@ -58,16 +61,17 @@ function getLights():Array<THREE.Light>{
         pointLights.push(pointLight)
 
         let plHelper = new THREE.SpotLightHelper(pointLight)
-        scene.add(plHelper)
+        // scene.add(plHelper)
     }
 
     return [pointLight1, pointLight2, ...pointLights];
+
 }
 
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
-renderer.setClearColor(0x515151);
+renderer.setClearColor(0x000000);
 document.body.appendChild(renderer.domElement)
 
 stats.showPanel(2)
