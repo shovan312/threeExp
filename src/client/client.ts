@@ -35,14 +35,24 @@ import {LightControls} from "./lightcontrols";
 let gridHelper:GridHelper, axesHelper:AxesHelper, axes:Array<AxesHelper>;
 makeBackgroundObjects();
 ////////////////////////
-let flowText:Texture=new Texture(), nrmlText0:Texture=new Texture(), nrmlText1:Texture=new Texture(), cubeTexture:CubeTexture, rainbowText:Texture=new Texture();
+let
+    flowText:Texture=new Texture(),
+    nrmlText0:Texture=new Texture(),
+    nrmlText1:Texture=new Texture(),
+    cubeTexture:CubeTexture,
+    rainbowText:Texture=new Texture(),
+    glassRainbowText:Texture=new Texture(),
+    disturbText:Texture=new Texture()
 loadTextures()
 ///////////////////////////////
 makeWater()
 // makeGlassSphere()
 ////////////////
 
-let statueObj = await loadGltf('gltf/statue/scene.gltf')
+let statueObj = await loadGltf('gltf/poly/scene.gltf')
+let statue:THREE.Group = new THREE.Group();
+let statueGeo:THREE.BufferGeometry = new THREE.BufferGeometry();
+let statueMat:THREE.Material|THREE.Material[] = new THREE.Material();
 
 ///////////////
 
@@ -85,37 +95,55 @@ monoGeo.setAttribute('color', mono_color_attribute);
 
 let statueLoaded:boolean = false;
 
-let nearLight = new THREE.SpotLight(0xff0000, 100, 0, Math.PI/6)
+let nearLight = new THREE.SpotLight(0xff0000, 100, 0, Math.PI/3)
+nearLight.map = disturbText;
 nearLight.position.y = 10
 nearLight.position.z = 5
+nearLight.castShadow=true
 scene.add(nearLight)
-scene.add(nearLight.target)
 let nearLightHelper = new THREE.SpotLightHelper(nearLight)
 // scene.add(nearLightHelper)
 
-let rightLight = new THREE.SpotLight(0x00ff00, 100, 0, Math.PI/6)
+let rightLight = new THREE.SpotLight(0x00ff00, 100, 0, Math.PI/3)
+rightLight.map = disturbText;
 rightLight.position.y = 10
 rightLight.position.x = 5
 scene.add(rightLight)
 let rightLightHelper = new THREE.SpotLightHelper(rightLight)
 // scene.add(rightLightHelper)
 
-let farLight = new THREE.SpotLight(0x0000ff, 100, 0, Math.PI/6)
+let farLight = new THREE.SpotLight(0xff00ff, 100, 0, Math.PI/3)
+farLight.map = disturbText;
 farLight.position.y = 10
 farLight.position.z = -5
 scene.add(farLight)
 let farLightHelper = new THREE.SpotLightHelper(farLight)
 // scene.add(farLightHelper)
 
-let leftLight = new THREE.SpotLight(0xff00ff, 100, 0, Math.PI/6)
+let leftLight = new THREE.SpotLight(0xff7700, 100, 0, Math.PI/3)
+leftLight.map = disturbText;
 leftLight.position.y = 10
 leftLight.position.x = -5
 scene.add(leftLight)
 let leftLightHelper = new THREE.SpotLightHelper(leftLight)
 // scene.add(leftLightHelper)
 
-let lightControls = new LightControls({i:farLight, j:leftLight, k:nearLight, l:rightLight})
+let topLight = new THREE.SpotLight(0xffffff, 100, 0, Math.PI/6)
+topLight.map = disturbText;
+topLight.position.y = 15
+scene.add(topLight)
+let topLightHelper = new THREE.SpotLightHelper(topLight)
+// scene.add(topLightHelper)
 
+let insideLight = new THREE.PointLight(0xffffff, 10)
+scene.add(insideLight)
+
+let lightControls = new LightControls({i:farLight, j:leftLight, k:nearLight, l:rightLight, o:topLight})
+
+let room = new THREE.Mesh(new THREE.BoxGeometry(9,9,9), new THREE.MeshPhysicalMaterial({side:THREE.BackSide}))
+room.position.y = 3
+room.receiveShadow=true
+scene.add(room)
 
 ///////////////
 
@@ -129,17 +157,47 @@ document.addEventListener('keyup', (event) => {
 
 let controls = new Controls(orbitControls, camera);
 
+
 //////////////
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
     if(statueObj!=undefined  && !statueLoaded) {
         //@ts-ignore
-        let statue = statueObj.scene as THREE.Group
+        statue = statueObj.scene as THREE.Group
+        statue.castShadow=true
         scene.add(statue)
-        statue.position.set(3,3.5,18)
-        statueLoaded = false
+        // statue.position.set(3,3.5,18)
+        statue.position.set(0,3.5,0)
+        statue.scale.set(60,60,60)
+        statueLoaded = true
+
+        // statueGeo = (statue.children[0].children[0].children[0] as THREE.Mesh).geometry
+        // statueMat = (statue.children[0].children[0].children[0] as THREE.Mesh).material as THREE.Material
+
+        //@ts-ignore
+        // statueMat.wireframe = true
     }
+    if(statueLoaded) {
+        if(3*Math.PI/2 + time/5 < 7/2*Math.PI) {
+            insideLight.position.y = 5 + 5*Math.sin(3*Math.PI/2 + time/5)
+            statue.position.y = 5 + 5*Math.sin(3*Math.PI/2 + time/5)
+        }
+        statue.rotation.y += 0.01
+    }
+
+    // let statuePos = statueGeo.getAttribute('position').array as Float32Array
+    // let statueNormal = statueGeo.getAttribute('normal').array
+    // for(let i=0; i<statuePos.length; i+=3) {
+    //     let currPos = new THREE.Vector3(statuePos[i], statuePos[i+1], statuePos[i+2])
+    //     let currNormal = new THREE.Vector3(statueNormal[i], statueNormal[i+1], statueNormal[i+2])
+    //
+    //
+    //     statuePos[i] = currPos.x
+    //     statuePos[i+1] = currPos.y
+    //     statuePos[i+2] = currPos.z
+    // }
+    // statueGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(statuePos), 3))
 
     let monoCol = monoGeo.getAttribute('color').array
     for(let i=0; i<monoCol.length; i+=3) {
@@ -225,6 +283,8 @@ function loadTextures() {
     nrmlText0 = textureLoader.load('./Water_1_M_Normal.jpg');
     nrmlText1 = textureLoader.load('./Water_2_M_Normal.jpg');
     rainbowText = textureLoader.load('./rainbow.jpg')
+    glassRainbowText = textureLoader.load('./glass-rainbow.jpg')
+    disturbText = textureLoader.load('./disturb.jpg')
 
     cubeTexture = new THREE.CubeTextureLoader().load([
         'paperSquare.png',
@@ -291,3 +351,4 @@ function makeGlassSphere() {
     sphere.position.z = -2
     sphere.position.y = 2
 }
+

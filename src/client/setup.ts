@@ -25,7 +25,7 @@ function getCamera(type:string): THREE.PerspectiveCamera | THREE.OrthographicCam
             window.innerWidth / window.innerHeight,
             0.1,
             1000)
-        camera.position.set(0, 3, 15.39);
+        camera.position.set(0, 13, 15.39);
     }
     else {
         let aspect = window.innerWidth / window.innerHeight

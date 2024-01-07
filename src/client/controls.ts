@@ -112,7 +112,6 @@ export class Controls{
         if(keysPressed[RIGHT]) {
             rotationOffset.add(new THREE.Vector3(0, -Math.PI/500,0))
         }
-        console.log(rotationOffset)
         return rotationOffset;
     }
 }
