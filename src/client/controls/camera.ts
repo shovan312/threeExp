@@ -13,7 +13,7 @@ export const SHIFT = 'shift'
 export const DIRECTIONS = [W, A, S, D]
 export const ROTATIONS = [UP, DOWN, LEFT, RIGHT]
 
-export class Controls{
+export class Camera {
     orbitControl: OrbitControls
     camera: THREE.Camera
     walkDirection = new THREE.Vector3()

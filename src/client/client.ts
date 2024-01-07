@@ -11,10 +11,10 @@ import {
     OrthographicCamera,
     Texture, Vector2
 } from "three";
-import {Line} from "./line";
+import {Line} from "./helpers/general/line";
 import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise'
 import {SVGLoader, SVGResult} from 'three/examples/jsm/loaders/SVGLoader';
-import { Spiro } from './spiro';
+import { Spiro } from './helpers/spiro/spiro';
 import Stats from 'three/examples/jsm/libs/stats.module'
 import {
     scene,
@@ -26,10 +26,10 @@ import {
     textureLoader,
     lights
 } from "./setup";
-import {loadGltf} from "./gltf";
+import {loadGltf} from "./loaders/gltf";
 import {fract} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
-import {Controls} from "./controls";
-import {LightControls} from "./lightcontrols";
+import {Camera} from "./controls/camera";
+import {Light} from "./controls/light";
 
 /////////////////////////
 let gridHelper:GridHelper, axesHelper:AxesHelper, axes:Array<AxesHelper>;
@@ -42,10 +42,6 @@ makeWater()
 // makeGlassSphere()
 ////////////////
 
-let statueObj = await loadGltf('gltf/statue/scene.gltf')
-
-///////////////
-
 cubeTexture = new THREE.CubeTextureLoader().load([
     'paperSquare.png',
     'paperSquare.png',
@@ -56,32 +52,8 @@ cubeTexture = new THREE.CubeTextureLoader().load([
 ])
 cubeTexture.anisotropy = 0.1
 scene.background = cubeTexture
-// makeGlassSphere()
-scene.add(new AxesHelper(10))
 
 /////////////
-let monoRes = 200
-let monoGeo = new THREE.PlaneGeometry(10, 10, monoRes-1, monoRes-1);
-let monoMat = new THREE.MeshPhysicalMaterial({
-    vertexColors:true,
-    side:THREE.DoubleSide
-});
-let monoMesh = new THREE.Mesh(monoGeo, monoMat);
-// scene.add(monoMesh)
-// adding a color attribute
-
-const monoPosLen = monoGeo.getAttribute('position').count;
-const mono_color_array = [];
-let i = 0;
-while(i < monoPosLen){
-    mono_color_array.push(i/monoPosLen,0,0);
-    i += 1;
-}
-const mono_color_attribute = new THREE.BufferAttribute(new Float32Array(mono_color_array), 3);
-monoGeo.setAttribute('color', mono_color_attribute);
-// scene.add(new THREE.AmbientLight(0xffffff))
-
-///////////////
 
 let statueLoaded:boolean = false;
 
@@ -114,8 +86,7 @@ scene.add(leftLight)
 let leftLightHelper = new THREE.SpotLightHelper(leftLight)
 // scene.add(leftLightHelper)
 
-let lightControls = new LightControls({i:farLight, j:leftLight, k:nearLight, l:rightLight})
-
+let lightControls = new Light({i:farLight, j:leftLight, k:nearLight, l:rightLight})
 
 ///////////////
 
@@ -127,34 +98,22 @@ document.addEventListener('keyup', (event) => {
     (keysPressed as any)[event.key.toLowerCase()] = false
 }, false);
 
-let controls = new Controls(orbitControls, camera);
+let controls = new Camera(orbitControls, camera);
 
 //////////////
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
-    if(statueObj!=undefined  && !statueLoaded) {
-        //@ts-ignore
-        let statue = statueObj.scene as THREE.Group
-        scene.add(statue)
-        statue.position.set(3,3.5,18)
-        statueLoaded = false
-    }
 
-    let monoCol = monoGeo.getAttribute('color').array
-    for(let i=0; i<monoCol.length; i+=3) {
-        const ind = Math.floor(i/3)
-        const uv = new THREE.Vector2(ind%monoRes / (monoRes-1), Math.floor(ind/monoRes) / (monoRes-1))
 
-        // if(time > 1 && time < 1.02) console.log(ind, uv)
 
-        let col = getColor(uv, time);
 
-        monoCol[i + 0] = col.x
-        monoCol[i + 1] = col.y
-        monoCol[i + 2] = col.z
-    }
-    monoGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(monoCol), 3))
+
+
+
+
+
+
 
     controls.updateCamera(camera, orbitControls, keysPressed, clock.getDelta())
     lightControls.updateLights(keysPressed, time)

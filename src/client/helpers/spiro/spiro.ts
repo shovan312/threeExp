@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {Line} from "./line";
+import {Line} from "../general/line";
 import {complex} from 'ts-complex-numbers';
 import {texture} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
 import {Texture} from "three";

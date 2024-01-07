@@ -8,7 +8,7 @@ export const L = 'l'
 export const SHIFT = 'shift'
 export const LIGHTS = [I, J, K, L, SHIFT]
 
-export class LightControls{
+export class Light {
     lightsMap: {}
 
     constructor(lightsMap: {}) {
@@ -35,8 +35,5 @@ export class LightControls{
             }
         }
     }
-
-
-
 
 }

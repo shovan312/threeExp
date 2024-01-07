@@ -1,7 +1,7 @@
 import {SVGLoader, SVGResult} from "three/examples/jsm/loaders/SVGLoader";
 import * as THREE from "three";
-import {Line} from "./line";
-import {coefficient, Spiro} from "./spiro";
+import {Line} from "../helpers/general/line";
+import {coefficient, Spiro} from "../helpers/spiro/spiro";
 import {complex} from 'ts-complex-numbers';
 
 const fourierResolution = 13;
