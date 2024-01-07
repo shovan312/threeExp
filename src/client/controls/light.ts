@@ -16,7 +16,6 @@ export class Light {
 
     }
 
-
     public updateLights(keysPressed:{}, time:number) {
         const lightPressed = LIGHTS.some(key => (keysPressed as any)[key] == true)
         // if (!lightPressed) return

@@ -28,7 +28,7 @@ import {
 } from "./setup";
 import {loadGltf} from "./loaders/gltf";
 import {fract} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
-import {Camera} from "./controls/camera";
+import {CameraControls} from "./controls/camera";
 import {Light} from "./controls/light";
 
 /////////////////////////
@@ -39,7 +39,7 @@ let flowText:Texture=new Texture(), nrmlText0:Texture=new Texture(), nrmlText1:T
 loadTextures()
 ///////////////////////////////
 makeWater()
-// makeGlassSphere()
+makeGlassSphere()
 ////////////////
 
 cubeTexture = new THREE.CubeTextureLoader().load([
@@ -57,48 +57,21 @@ scene.background = cubeTexture
 
 let statueLoaded:boolean = false;
 
-let nearLight = new THREE.SpotLight(0xff0000, 100, 0, Math.PI/6)
-nearLight.position.y = 10
-nearLight.position.z = 5
-scene.add(nearLight)
-scene.add(nearLight.target)
-let nearLightHelper = new THREE.SpotLightHelper(nearLight)
-// scene.add(nearLightHelper)
 
-let rightLight = new THREE.SpotLight(0x00ff00, 100, 0, Math.PI/6)
-rightLight.position.y = 10
-rightLight.position.x = 5
-scene.add(rightLight)
-let rightLightHelper = new THREE.SpotLightHelper(rightLight)
-// scene.add(rightLightHelper)
 
-let farLight = new THREE.SpotLight(0x0000ff, 100, 0, Math.PI/6)
-farLight.position.y = 10
-farLight.position.z = -5
-scene.add(farLight)
-let farLightHelper = new THREE.SpotLightHelper(farLight)
-// scene.add(farLightHelper)
-
-let leftLight = new THREE.SpotLight(0xff00ff, 100, 0, Math.PI/6)
-leftLight.position.y = 10
-leftLight.position.x = -5
-scene.add(leftLight)
-let leftLightHelper = new THREE.SpotLightHelper(leftLight)
-// scene.add(leftLightHelper)
-
-let lightControls = new Light({i:farLight, j:leftLight, k:nearLight, l:rightLight})
+let lightControls = new Light({i:lights[0], j:lights[1], k:lights[2], l:lights[3]})
 
 ///////////////
 
+let controls = new CameraControls(orbitControls, camera);
 const keysPressed = {}
 document.addEventListener('keydown', (event) => {
         (keysPressed as any)[event.key.toLowerCase()] = true
 }, false);
+
 document.addEventListener('keyup', (event) => {
     (keysPressed as any)[event.key.toLowerCase()] = false
 }, false);
-
-let controls = new Camera(orbitControls, camera);
 
 //////////////
 function animate() {

@@ -13,7 +13,7 @@ export const SHIFT = 'shift'
 export const DIRECTIONS = [W, A, S, D]
 export const ROTATIONS = [UP, DOWN, LEFT, RIGHT]
 
-export class Camera {
+export class CameraControls {
     orbitControl: OrbitControls
     camera: THREE.Camera
     walkDirection = new THREE.Vector3()
@@ -51,17 +51,18 @@ export class Camera {
         const moveZ = this.walkDirection.z * velocity * delta
 
         if (directionPressed) this.updateCameraTarget(moveX, moveZ)
-        // if (rotationPressed) this.updateCameraRotation(rotationOffset)
+        if (rotationPressed) this.updateCameraRotation(rotationOffset)
     }
 
     private updateCameraTarget(moveX: number, moveZ: number) {
         // move camera
         this.camera.position.x += moveX
         this.camera.position.z += moveZ
+        // console.log(this.camera.position.x, this.camera.position.z)
 
         // update camera target
         this.cameraTarget.x = 0
-        this.cameraTarget.y = 1
+        this.cameraTarget.y = 4
         this.cameraTarget.z = 0
         this.orbitControl.target = this.cameraTarget
         this.camera.lookAt(0,4,0)
@@ -112,7 +113,7 @@ export class Camera {
         if(keysPressed[RIGHT]) {
             rotationOffset.add(new THREE.Vector3(0, -Math.PI/500,0))
         }
-        console.log(rotationOffset)
+        // console.log(rotationOffset)
         return rotationOffset;
     }
 }

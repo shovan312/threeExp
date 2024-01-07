@@ -39,18 +39,41 @@ function getCamera(type:string): THREE.PerspectiveCamera | THREE.OrthographicCam
 }
 
 function getLights():Array<THREE.Light>{
-    const pointLight1 = new THREE.PointLight(0xffffff, 100);
-    const pointLight2 = new THREE.PointLight(0xffffff, 100);
-    pointLight1.position.z = 15
-    pointLight2.position.z = -15
-    // scene.add(pointLight1)
-    // scene.add(pointLight2)
+    let nearLight = new THREE.SpotLight(0xff0000, 100, 0, Math.PI/6)
+    nearLight.position.y = 10
+    nearLight.position.z = 5
+    scene.add(nearLight)
+    scene.add(nearLight.target)
+    let nearLightHelper = new THREE.SpotLightHelper(nearLight)
+    scene.add(nearLightHelper)
+
+    let rightLight = new THREE.SpotLight(0x00ff00, 100, 0, Math.PI/6)
+    rightLight.position.y = 10
+    rightLight.position.x = 5
+    scene.add(rightLight)
+    let rightLightHelper = new THREE.SpotLightHelper(rightLight)
+    scene.add(rightLightHelper)
+
+    let farLight = new THREE.SpotLight(0x0000ff, 100, 0, Math.PI/6)
+    farLight.position.y = 10
+    farLight.position.z = -5
+    scene.add(farLight)
+    let farLightHelper = new THREE.SpotLightHelper(farLight)
+    scene.add(farLightHelper)
+
+    let leftLight = new THREE.SpotLight(0xff00ff, 100, 0, Math.PI/6)
+    leftLight.position.y = 10
+    leftLight.position.x = -5
+    scene.add(leftLight)
+    let leftLightHelper = new THREE.SpotLightHelper(leftLight)
+    scene.add(leftLightHelper)
 
     const pointLights:Array<THREE.Light> = []
-    for(let i=0; i<10;i++) {
+    for(let i=0; i<1;i++) {
         const pointLight = new THREE.SpotLight(0xffffff, 1000, 0, Math.PI/4, 0.5);
+        pointLight.position.y = 10;
         pointLight.castShadow = true
-        // scene.add(pointLight)
+        scene.add(pointLight)
         pointLight.shadow.bias = -0.003
         pointLight.shadow.mapSize.width = 2048
         pointLight.shadow.mapSize.height = 2048
@@ -59,11 +82,10 @@ function getLights():Array<THREE.Light>{
         pointLights.push(pointLight)
 
         let plHelper = new THREE.SpotLightHelper(pointLight)
-        // scene.add(plHelper)
+        scene.add(plHelper)
     }
 
-    return [pointLight1, pointLight2, ...pointLights];
-
+    return [nearLight, farLight, rightLight, leftLight, ...pointLights];
 }
 
 renderer.setSize(window.innerWidth, window.innerHeight)
