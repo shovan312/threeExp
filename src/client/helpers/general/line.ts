@@ -23,7 +23,7 @@ export class Line {
             // resolution: resolution,
             sizeAttenuation: false,
             lineWidth: lineWidth,
-            depthWrite: false,
+            depthWrite: true,
             // depthTest: !false, //useMap
             // alphaTest: false ? .5 : 0, //useMap
             transparent: true,

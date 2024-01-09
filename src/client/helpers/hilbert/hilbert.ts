@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {ColorRepresentation, LineBasicMaterial, Texture} from "three";
+import {Line} from '../general/line'
 const MeshLine = require('three.meshline').MeshLine;
 const MeshLineMaterial = require('three.meshline').MeshLineMaterial;
 
@@ -32,8 +33,7 @@ export class Hilbert {
                 prev = this.getNextStep(prev)
             }
             for(let i=0; i<depth; i++) {
-                next =
-                    this.getNextStep(next)
+                next = this.getNextStep(next)
             }
             prev = this.interpolatePoints(prev)
             next = this.interpolatePoints(next)
@@ -41,17 +41,13 @@ export class Hilbert {
         }
         else {
             for(let i=0; i<depthFloor; i++) {
-                this.points =
-                    this.getNextStep(structuredClone(this.points))
+                this.points = this.getNextStep(structuredClone(this.points))
             }
             this.points = this.interpolatePoints(this.points);
         }
-        this.colors = this.getColors();
-        // ThreeJS Line
-        // return this.makeCurve(this.points)
-
-        // LineMesh Line
-        return this.makeLine(this.points)
+        let line = new Line(this.points, new Texture(), new THREE.Color(0xff0000))
+        this.curve = line.curve
+        return line.curve;
     }
 
     private getNextStep(inp:Array<THREE.Vector3>):Array<THREE.Vector3> {
@@ -114,54 +110,7 @@ export class Hilbert {
         return interpolated;
     }
 
-    // private makeCurve(inp:Array<THREE.Vector3>):THREE.Line {
-    //     let geometry = new THREE.BufferGeometry().setFromPoints(inp);
-    //     this.curve = new THREE.Line(geometry, this.material);
-    //     this.curve.geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
-    //     return this.curve;
-    // }
-
-    public makeLine(inp:Array<THREE.Vector3>):THREE.Mesh {
-        let geometry = new THREE.BufferGeometry().setFromPoints(inp);
-        const line = new MeshLine();
-
-        // @ts-ignore
-        line.setGeometry(geometry, function(p) { return 0.08*Math.sin(p*2*Math.PI)});
-        let glassRainbowText = this.texture
-        let color = new THREE.Color(0xee5511);
-        const lineMaterial = new MeshLineMaterial({
-            map: glassRainbowText,
-            useMap: true,
-            // color: color,
-            opacity: 1,//params.strokes ? .5 : 1,
-            dashArray: 0.05,
-            dashOffset: 0,
-            dashRatio: 0.7,
-            // resolution: resolution,
-            sizeAttenuation: false,
-            lineWidth: 0.1,
-            // depthWrite: false,
-            // depthTest: !false, //useMap
-            // alphaTest: false ? .5 : 0, //useMap
-            transparent: true,
-            side: THREE.DoubleSide
-        });
-        this.curve = new THREE.Mesh(line, lineMaterial);
-        return this.curve;
-    }
-
-    private getColors() {
-        let curveCol:Array<number> = [];
-        for(let i=0; i<10*this.points.length; i++) {
-            const color:ColorRepresentation = new THREE.Color();
-            color.setHSL( i / ( this.points.length ) * 0.3 + 0.5, 1.0, 0.5, THREE.SRGBColorSpace );
-            curveCol.push( color.r, color.g, color.b );
-        }
-        return curveCol
-    }
-
     public update(seed: Array<THREE.Vector3>, depth:number) {
-
         return this.generateCurve(seed, depth)
     }
 
