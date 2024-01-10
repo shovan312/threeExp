@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import {rearrangeArr} from './transformations'
+
 
 //Get a cubical lattice.
 //Density through n
@@ -80,4 +82,16 @@ export function getRingPoints(n:number, radius:number) {
         posArray[i + 2] = 0;
     }
     return posArray;
+}
+
+export function getPointMesh(posArray:Float32Array) {
+    const latticeGeo = new THREE.BufferGeometry;
+    posArray = rearrangeArr(posArray)
+    latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
+    const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
+        size:0.1,
+        // color: 0xffffff,
+        vertexColors: true
+    }))
+    return latticeMesh;
 }

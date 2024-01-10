@@ -44,7 +44,7 @@ export class CameraControls {
         this.walkDirection.applyAxisAngle(this.rotateAngle, directionOffset)
         // console.log(directionOffset)
 
-        const velocity = 20
+        const velocity = 100
 
         // move model & camera
         const moveX = this.walkDirection.x * velocity * delta

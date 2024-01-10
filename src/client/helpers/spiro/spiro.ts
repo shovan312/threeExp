@@ -20,7 +20,7 @@ export class Spiro {
     constructor(coeffs: Array<coefficient>, thetaStart:number = 0, thetaEnd:number = 2*Math.PI, texture:Texture=new Texture()) {
         this.coeffs = coeffs
         let points = this.getSpiroPoints(coeffs, thetaStart, thetaEnd);
-        this.line = new Line(points, texture, undefined, 0.03, true)
+        this.line = new Line(points, texture, new THREE.Color(0x0000ff), 0.03, false)
         this.makeSpiroWheels(coeffs)
         this.texture = texture
     }
@@ -55,7 +55,7 @@ export class Spiro {
                 new THREE.MeshBasicMaterial({color: 0x919191, side:THREE.DoubleSide, transparent: true})
             )
             rings.push(ring)
-            // wheels[i].add(ring)
+            wheels[i].add(ring)
 
             const radius = new Line([new THREE.Vector3(0,0,0), new THREE.Vector3(coefficients[i].an.mag(),0,0)], new THREE.Texture(), new THREE.Color(0xaaaaaa), 0.05)
             radii.push(radius)
@@ -86,7 +86,7 @@ export class Spiro {
         }
     }
 
-    public drawTrail(time:number, makeTrail:boolean=false, speed:number=2, thetaLength:number=2*Math.PI, thetaResolution:number=200,i:number=0) {
+    public drawTrail(time:number, makeTrail:boolean=false, speed:number=2, thetaLength:number=2*Math.PI, thetaResolution:number=800,i:number=0) {
         if (makeTrail && this.line!=undefined) {
             this.line.points = this.getSpiroPoints(this.coeffs, Math.max(0, time*speed - thetaLength), time*speed, thetaResolution,i)
         }

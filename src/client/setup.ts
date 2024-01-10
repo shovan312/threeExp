@@ -205,7 +205,7 @@ export function makeGlassSphere() {
 
     let sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), glassMaterial);
     sphere.castShadow = true;
-    sphere.position.z = -2
+//     sphere.position.z = -2
     sphere.position.y = 2
 
     return sphere;

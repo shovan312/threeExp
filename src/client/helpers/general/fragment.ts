@@ -1,3 +1,6 @@
+
+import * as THREE from 'three';
+
 export function getColor(uv:THREE.Vector2, time:number):THREE.Vector3{
     let col = new THREE.Vector3(0,0,0)
     // if(time > 1 && time < 1.02) console.log(uv.x)
