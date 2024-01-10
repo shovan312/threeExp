@@ -13,12 +13,11 @@ export class Light {
 
     constructor(lightsMap: {}) {
         this.lightsMap = lightsMap
-
     }
 
     public updateLights(keysPressed:{}, time:number) {
         const lightPressed = LIGHTS.some(key => (keysPressed as any)[key] == true)
-        // if (!lightPressed) return
+//         if (!lightPressed) return
         for (let lightsMapKey in this.lightsMap) {
             if((keysPressed as any)[lightsMapKey] == true) {
                 ((this.lightsMap as any)[lightsMapKey] as THREE.Light).intensity = 100

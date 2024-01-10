@@ -43,13 +43,14 @@ let glassSphere:THREE.Object3D = makeGlassSphere()
 sceneBasicObjects.push(glassSphere)
 ///////////////////////////////
 let lightControls = new Light({
-// i:lights[0], j:lights[1], k:lights[2], l:lights[3],
-C:lights[0], G:lights[1], E:lights[2], D:lights[3]
+i:lights[1], k:lights[0], j:lights[3], l:lights[2],
+// C:lights[0], G:lights[1], E:lights[2], D:lights[3]
  })
 let controls = new CameraControls(orbitControls, camera);
 ///////////////////////////////
 sceneBasicObjects.forEach(object => scene.add(object))
-scene.background = cubeTexture;
+// scene.background = cubeTexture;
+scene.background = new THREE.Color(0x212121);
 ///////////////////////////////
 
 let hilbert = new Hilbert([
@@ -118,6 +119,7 @@ let midiKeysPressed:any = {}
 for(let i=0; i<midiJson.tracks.length; i++) {
     midiKeysPressed[''+i] = {}
 }
+// console.log(midiJson)
 ///////////////////////////////
 
 
@@ -135,6 +137,22 @@ function animate() {
     lightControls.updateLights(keysPressed, time)
     midiController.updateCursor(time, midiKeysPressed);
 //     console.log(midiKeysPressed[0])
+
+    for(let k in midiKeysPressed[0]) {
+        if (midiKeysPressed[0][k] == true) {
+            let scl = ((k as unknown as number) - 50)/20
+            glassSphere.scale.set(scl,scl,scl)
+            hilbert.curve.position.x += scl - 0.8
+            hilbert2.position.x -= scl - 0.8
+        }
+    }
+//     for(let k in midiKeysPressed[1]) {
+//             if (midiKeysPressed[1][k] == true) {
+//                 let scl = ((k as unknown as number) - 50)/20
+//                 glassSphere.scale.set(scl,scl,scl)
+//             }
+//         }
+
 
     camera.updateProjectionMatrix()
     stats.update()

@@ -193,7 +193,7 @@ export function makeWater(flowText:THREE.Texture, nrmlText0:THREE.Texture, nrmlT
 export function makeGlassSphere() {
     const glassMaterial = new THREE.MeshPhysicalMaterial({
     } as THREE.MeshPhysicalMaterialParameters);
-    glassMaterial.color = new THREE.Color( 0xffffff );
+    glassMaterial.color = new THREE.Color( 0xff2121 );
     glassMaterial.clearcoat = 0.8;
     glassMaterial.ior = 1.15;
     glassMaterial.specularIntensity = 0.6;
@@ -203,7 +203,7 @@ export function makeGlassSphere() {
     glassMaterial.sheen = 0.0;
     glassMaterial.sheenColor = new THREE.Color( 0xffffff );
 
-    let sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), glassMaterial);
+    let sphere = new THREE.Mesh(new THREE.SphereGeometry(10, 64, 64), glassMaterial);
     sphere.castShadow = true;
 //     sphere.position.z = -2
     sphere.position.y = 2

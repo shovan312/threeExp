@@ -75,13 +75,13 @@ export class MidiController {
         for(let i=0; i < this.midi.tracks.length; i++) {
             let track = this.midi.tracks[i]
             let notes = track.notes
-            for(let j=this.trackCursors[i]; j < notes.length - 1; j++) {
+            for(let j=this.trackCursors[i]; j < notes.length ; j++) {
                 if (time*100 > this.mpt*notes[j].ticks && time*100 < this.mpt*(notes[j].ticks + notes[j].durationTicks)) {
-                    midiKeysPressed[i][notes[j].pitch] = true
+                    midiKeysPressed[i][notes[j].midi] = true
                     this.trackCursors[i] = j
                 }
-                else if (time*100 > this.mpt*(notes[j].ticks + notes[j].durationTicks) && time*100 < this.mpt*notes[j+1].ticks) {
-                    delete midiKeysPressed[i][notes[j].pitch]
+                else if (j < notes.length - 1 && time*100 > this.mpt*(notes[j].ticks + notes[j].durationTicks) && time*100 < this.mpt*notes[j+1].ticks) {
+                    delete midiKeysPressed[i][notes[j].midi]
                 }
             }
 

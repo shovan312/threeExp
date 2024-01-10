@@ -62,10 +62,10 @@ export class CameraControls {
 
         // update camera target
         this.cameraTarget.x = 0
-        this.cameraTarget.y = 4
+        this.cameraTarget.y = 2
         this.cameraTarget.z = 0
         this.orbitControl.target = this.cameraTarget
-        this.camera.lookAt(0,4,0)
+        this.camera.lookAt(0,2,0)
     }
 
     private updateCameraRotation(rotationOffset:THREE.Vector3) {
@@ -113,7 +113,7 @@ export class CameraControls {
         if(keysPressed[RIGHT]) {
             rotationOffset.add(new THREE.Vector3(0, -Math.PI/500,0))
         }
-        // console.log(rotationOffset)
+//         console.log(keysPressed)
         return rotationOffset;
     }
 }

@@ -45,7 +45,7 @@ export class Hilbert {
             }
             this.points = this.interpolatePoints(this.points);
         }
-        let line = new Line(this.points, new Texture(), new THREE.Color(0xff0000))
+        let line = new Line(this.points, new Texture(), new THREE.Color(0x21aa21))
         this.curve = line.curve
         return line.curve;
     }
