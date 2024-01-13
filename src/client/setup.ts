@@ -203,7 +203,7 @@ export function makeGlassSphere() {
     glassMaterial.sheen = 0.0;
     glassMaterial.sheenColor = new THREE.Color( 0xffffff );
 
-    let sphere = new THREE.Mesh(new THREE.SphereGeometry(10, 64, 64), glassMaterial);
+    let sphere = new THREE.Mesh(new THREE.SphereGeometry(5, 64, 64), glassMaterial);
     sphere.castShadow = true;
 //     sphere.position.z = -2
     sphere.position.y = 2

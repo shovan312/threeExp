@@ -89,7 +89,7 @@ export function getPointMesh(posArray:Float32Array) {
     posArray = rearrangeArr(posArray)
     latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
     const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
-        size:0.1,
+        size:0.3,
         // color: 0xffffff,
         vertexColors: true
     }))

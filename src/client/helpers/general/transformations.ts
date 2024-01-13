@@ -19,22 +19,22 @@ export function wave(arr:Float32Array, A:number, k:number, w:number, time:number
 
 function displace(vec:THREE.Vector3, A:number, k:number, w:number, time:number):THREE.Vector3 {
     //Plane waves along axes
-    // vec.x +=  A*Math.sin(k*vec.x + w*time)
-    // vec.y +=  A*Math.sin(k*vec.y + w*time)
-    // vec.z +=  A*Math.sin(k*vec.z + w*time)
+    vec.x +=  A*Math.sin(k*vec.x + w*time)
+//     vec.y +=  A*Math.sin(k*vec.y + w*time)
+//     vec.z +=  A*Math.sin(k*vec.z + w*time)
 
     //Sin waves along axes
-    // vec.x += A*Math.sin(k*vec.y + w*time/5)
-    // vec.y += A*Math.cos(k*vec.z + w*time/5)
+//     vec.x += A*Math.sin(k*vec.y + w*time/5)
+    vec.y += A*Math.cos(k*vec.z + w*time/5)
     // vec.z += A*Math.sin(k*vec.x + w*time/5)
 
     //Composite waves
-    vec.x += 0.1*vec.x*A*Math.sin(k*vec.z + k*vec.y + w*time)
+//     vec.x += 0.1*vec.x*A*Math.sin(k*vec.z + k*vec.y + w*time)
 
     //3D Radial waves
-    // let r = vec.length()
-    // let disp = 0.1*Math.sin(r - 5*time);
-    // vec.multiplyScalar(1 + disp)
+//     let r = vec.length()
+//     let disp = 0.1*Math.sin(r - 5*time);
+//     vec.multiplyScalar(1 + disp)
 
     //2D Radial waves
     // let r = Math.sqrt(vec.x*vec.x + vec.y*vec.y)
@@ -48,7 +48,7 @@ function displace(vec:THREE.Vector3, A:number, k:number, w:number, time:number):
 export function burn(arr:Float32Array, time:number) {
     const len = arr.length/3
     const ret = new Float32Array(arr.length)
-    const winLen = Math.floor(len/3)
+    const winLen = Math.floor(len/2)
     const winStart = time*70000 % (len)
     const winEnd =( winLen + winStart) % (len)
     for(let i=0; i<arr.length; i+=3) {

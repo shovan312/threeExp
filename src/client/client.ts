@@ -9,7 +9,7 @@ import {SVGLoader, SVGResult} from 'three/examples/jsm/loaders/SVGLoader';
 import { Spiro } from './helpers/spiro/spiro';
 import {clockCoeff} from './helpers/spiro/coefficients'
 import {getCube, getPointMesh} from './helpers/general/points'
-// import {rearrangeArr} from './helpers/general/transformations'
+import {rearrangeArr, wave, burn, morph} from './helpers/general/transformations'
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { scene, clock, stats, camera, renderer, orbitControls, textureLoader,lights,makeHelperObjects, loadTextures,
  makeGlassSphere, makeWater, keysPressed} from "./setup";
@@ -33,11 +33,11 @@ axesHelper:AxesHelper,
 axes:Array<AxesHelper>;
 [gridHelper, axesHelper, axes] = makeHelperObjects();
 
-// sceneBasicObjects.push(gridHelper, axesHelper, ...axes)
+sceneBasicObjects.push(gridHelper)
 ///////////////////////////////
 let water:THREE.Object3D, water2:THREE.Object3D;
 [water, water2] = makeWater(flowText, nrmlText0, nrmlText1)
-sceneBasicObjects.push(water, water2)
+// sceneBasicObjects.push(water, water2)
 
 let glassSphere:THREE.Object3D = makeGlassSphere()
 sceneBasicObjects.push(glassSphere)
@@ -49,8 +49,8 @@ i:lights[1], k:lights[0], j:lights[3], l:lights[2],
 let controls = new CameraControls(orbitControls, camera);
 ///////////////////////////////
 sceneBasicObjects.forEach(object => scene.add(object))
-// scene.background = cubeTexture;
 scene.background = new THREE.Color(0x212121);
+scene.background = cubeTexture;
 ///////////////////////////////
 
 let hilbert = new Hilbert([
@@ -73,22 +73,23 @@ scene.add(hilbert2)
 let spiro = new Spiro(clockCoeff)
 // spiro.wheels[0].position.z = -15
 spiro.wheels[0].scale.set(1/2,1/2,1/2)
-scene.add(spiro.wheels[0])
+// scene.add(spiro.wheels[0])
 
 ///////////////////////////////
 
-const latticeMesh = getPointMesh(getCube(16).posArray);
-scene.add(latticeMesh)
+let latticeArray:Float32Array = getCube(16).posArray;
+const latticeMesh = getPointMesh(latticeArray);
+// scene.add(latticeMesh)
 ///////////////////////////////
 
 let objLoaded:boolean = false;
 const loadedObj = await loadObj('./obj/FinalBaseMesh.obj')
 //@ts-ignore
 let objMesh = loadedObj.children[0];
-scene.add(objMesh)
-objMesh.position.y = -10
+// scene.add(objMesh)
+objMesh.position.y = -3
 objMesh.scale.set(0.5,0.5,0.5)
-objMesh.material.wireframe = true
+// objMesh.material.wireframe = true
 
 objLoaded = true
 
@@ -98,7 +99,7 @@ let gltfLoaded:boolean = false;
 const loadedGltf = await loadGltf('./gltf/mike/scene.gltf')
 //@ts-ignore
 let gltfMesh = loadedGltf.scene
-scene.add(gltfMesh)
+// scene.add(gltfMesh)
 gltfMesh.position.y = 7
 gltfMesh.position.x = 1.16
 gltfMesh.scale.set(3,3,3)
@@ -112,14 +113,14 @@ gltfLoaded = true
 
 ///////////////////////////////
 
-let midiJson:Midi = await loadMidi('./midi/twinkle_twinkle.mid');
+let midiJson:Midi = await loadMidi('./midi/twinkle120.mid');
 let midiController = new MidiController(midiJson)
 let midiKeysPressed:any = {}
 
 for(let i=0; i<midiJson.tracks.length; i++) {
     midiKeysPressed[''+i] = {}
 }
-// console.log(midiJson)
+console.log(midiJson)
 ///////////////////////////////
 
 
@@ -152,6 +153,20 @@ function animate() {
 //                 glassSphere.scale.set(scl,scl,scl)
 //             }
 //         }
+
+    let latticeWaveArray:Float32Array = wave(latticeArray, Math.max(0, 5-time/2), 2, 1, time)
+    let latticeWaveCols:Float32Array = new Float32Array(latticeWaveArray.length)
+    for(let i=0; i<latticeWaveArray.length; i+=3) {
+        let ind = Math.floor(i/3)
+        let newCol = new THREE.Color(ind/latticeWaveArray.length, (ind+1)/latticeWaveArray.length, (ind+2)/latticeWaveArray.length)
+        latticeWaveCols[3*ind] = newCol.r
+        latticeWaveCols[3*ind+1] = 0
+        latticeWaveCols[3*ind+2] = newCol.b/4
+    }
+    latticeMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(latticeWaveArray, 3))
+    latticeMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(latticeWaveCols, 3))
+
+
 
 
     camera.updateProjectionMatrix()
