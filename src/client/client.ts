@@ -20,6 +20,10 @@ import {Light} from "./controls/light";
 import {Hilbert} from "./helpers/hilbert/hilbert"
 import {loadMidi, MidiController} from "./controls/midi"
 import {Midi} from "@tonejs/midi";
+//@ts-ignore
+import vertexShader from './shaders/vertexbasic.glsl'
+//@ts-ignore
+import fragmentShader from './shaders/raymarching.glsl'
 
 
 /////////////////////////
@@ -54,54 +58,33 @@ scene.background = cubeTexture;
 
 let monoRes = 200
 let monoGeo = new THREE.PlaneGeometry(10, 10, monoRes-1, monoRes-1);
-let monoMat = new THREE.MeshBasicMaterial({
-    vertexColors:true,
-    side:THREE.DoubleSide,
+let monoMat = new THREE.ShaderMaterial({
+    side: THREE.DoubleSide,
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader
 });
+monoMat.uniforms.uTime = {value: 0}
+monoMat.uniforms.uMouse = {value: new THREE.Vector2(1/2,1/2)}
+
+
 let monoMesh = new THREE.Mesh(monoGeo, monoMat);
 scene.add(monoMesh)
 monoMesh.position.z = 0.02
-console.log(monoMesh)
 
-// adding a color attribute
-const monoPosLen = monoGeo.getAttribute('position').count;
-const mono_color_array = [];
-let i = 0;
-while(i < monoPosLen){
-    mono_color_array.push(i/monoPosLen,0,0);
-    i += 1;
+document.onmousemove = function (e) {
+    monoMat.uniforms.uMouse = {value: new THREE.Vector2(e.pageX/window.innerWidth, e.pageY/window.innerHeight)}
+//     console.log(monoMat.uniforms.uMouse.value.x, monoMat.uniforms.uMouse.value.y)
 }
-const mono_color_attribute = new THREE.BufferAttribute(new Float32Array(mono_color_array), 3);
-monoGeo.setAttribute('color', mono_color_attribute);
+
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
 //     controls.updateCamera(camera, orbitControls, keysPressed, clock.getDelta())
-    let debugX = []
-    let debugY = []
-
-
     lightControls.updateLights(keysPressed, time)
-    let monoCol = monoGeo.getAttribute('color').array
-    for(let i=0; i<monoCol.length; i+=3) {
-        const ind = Math.floor(i/3)
-        const uv = new THREE.Vector2(ind%monoRes / (monoRes-1), 1 -  Math.floor(ind/monoRes) / (monoRes-1))
-        uv.add(new THREE.Vector2(-0.5, -0.5));
-        uv.multiplyScalar(2)
 
-        debugX.push(uv.x)
-        debugY.push(uv.y)
-
-        let col = getColor(uv, time);
-        monoCol[i + 0] = col.r
-        monoCol[i + 1] = col.g
-        monoCol[i + 2] = col.b
-    }
-    monoGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(monoCol), 3))
-
-//     if (time > 0.5 && time < 0.6) console.log(1)
-
+    monoMat.uniforms.uTime.value = time;
+//     console.log(monoMat.uniforms.uMouse.x)
     camera.updateProjectionMatrix()
     stats.update()
     renderer.render(scene, camera)
