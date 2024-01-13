@@ -58,7 +58,7 @@ export class MidiController {
         }
     }
 
-    getLimits(mJson:M idi) {
+    getLimits(mJson:Midi) {
         let lowestNote = 1000, highestNote = 0
         for(let i in mJson.tracks) {
             for(let j in mJson.tracks[i].notes) {

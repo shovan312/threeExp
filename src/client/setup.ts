@@ -27,7 +27,7 @@ function getCamera(type:string): THREE.PerspectiveCamera | THREE.OrthographicCam
             window.innerWidth / window.innerHeight,
             0.1,
             1000)
-        camera.position.set(0, 3, 15.39);
+        camera.position.set(0, 0, 15.39);
     }
     else {
         let aspect = window.innerWidth / window.innerHeight
@@ -76,7 +76,8 @@ function getLights():Array<THREE.Light>{
     const pointLights:Array<THREE.Light> = []
     for(let i=0; i<1;i++) {
         const pointLight = new THREE.SpotLight(0xffffff, 1000, 0, Math.PI/4, 0.5);
-        pointLight.position.y = 10;
+        pointLight.position.z = 10;
+        pointLight.position.y = 0;
         pointLight.castShadow = true
         scene.add(pointLight)
         scene.add(pointLight.target)

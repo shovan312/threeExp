@@ -40,134 +40,67 @@ let water:THREE.Object3D, water2:THREE.Object3D;
 // sceneBasicObjects.push(water, water2)
 
 let glassSphere:THREE.Object3D = makeGlassSphere()
-sceneBasicObjects.push(glassSphere)
+// sceneBasicObjects.push(glassSphere)
 ///////////////////////////////
 let lightControls = new Light({
-i:lights[1], k:lights[0], j:lights[3], l:lights[2],
-// C:lights[0], G:lights[1], E:lights[2], D:lights[3]
+i:lights[1], k:lights[0], j:lights[3], l:lights[2]
  })
 let controls = new CameraControls(orbitControls, camera);
 ///////////////////////////////
 sceneBasicObjects.forEach(object => scene.add(object))
-scene.background = new THREE.Color(0x212121);
 scene.background = cubeTexture;
+// scene.background = new THREE.Color(0x212121);
 ///////////////////////////////
 
-let hilbert = new Hilbert([
-new THREE.Vector3(-2,-2, 0),
-new THREE.Vector3(-2,2, 0),
-new THREE.Vector3(2,2, 0),
-new THREE.Vector3(2,-2, 0),
-], 3)
-scene.add(hilbert.curve)
-hilbert.curve.position.x = 15
-hilbert.curve.rotation.y = Math.PI/2
-hilbert.curve.scale.set(3,3,3)
+let monoRes = 200
+let monoGeo = new THREE.PlaneGeometry(10, 10, monoRes-1, monoRes-1);
+let monoMat = new THREE.MeshBasicMaterial({
+    vertexColors:true,
+    side:THREE.DoubleSide,
+});
+let monoMesh = new THREE.Mesh(monoGeo, monoMat);
+scene.add(monoMesh)
+monoMesh.position.z = 0.02
+console.log(monoMesh)
 
-let hilbert2 = hilbert.curve.clone()
-hilbert2.position.x = -15
-scene.add(hilbert2)
-
-///////////////////////////////
-
-let spiro = new Spiro(clockCoeff)
-// spiro.wheels[0].position.z = -15
-spiro.wheels[0].scale.set(1/2,1/2,1/2)
-// scene.add(spiro.wheels[0])
-
-///////////////////////////////
-
-let latticeArray:Float32Array = getCube(16).posArray;
-const latticeMesh = getPointMesh(latticeArray);
-// scene.add(latticeMesh)
-///////////////////////////////
-
-let objLoaded:boolean = false;
-const loadedObj = await loadObj('./obj/FinalBaseMesh.obj')
-//@ts-ignore
-let objMesh = loadedObj.children[0];
-// scene.add(objMesh)
-objMesh.position.y = -3
-objMesh.scale.set(0.5,0.5,0.5)
-// objMesh.material.wireframe = true
-
-objLoaded = true
-
-///////////////////////////////
-
-let gltfLoaded:boolean = false;
-const loadedGltf = await loadGltf('./gltf/mike/scene.gltf')
-//@ts-ignore
-let gltfMesh = loadedGltf.scene
-// scene.add(gltfMesh)
-gltfMesh.position.y = 7
-gltfMesh.position.x = 1.16
-gltfMesh.scale.set(3,3,3)
-gltfMesh.traverse ( ( o:any ) => {
-        if ( o.isMesh ) {
-        o.material.wireframe = true;;
-        }
-    } );
-
-gltfLoaded = true
-
-///////////////////////////////
-
-let midiJson:Midi = await loadMidi('./midi/twinkle120.mid');
-let midiController = new MidiController(midiJson)
-let midiKeysPressed:any = {}
-
-for(let i=0; i<midiJson.tracks.length; i++) {
-    midiKeysPressed[''+i] = {}
+// adding a color attribute
+const monoPosLen = monoGeo.getAttribute('position').count;
+const mono_color_array = [];
+let i = 0;
+while(i < monoPosLen){
+    mono_color_array.push(i/monoPosLen,0,0);
+    i += 1;
 }
-console.log(midiJson)
-///////////////////////////////
-
+const mono_color_attribute = new THREE.BufferAttribute(new Float32Array(mono_color_array), 3);
+monoGeo.setAttribute('color', mono_color_attribute);
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
-    gltfMesh.position.x = 10*Math.sin(time)
-    objMesh.rotation.y = time/3
+//     controls.updateCamera(camera, orbitControls, keysPressed, clock.getDelta())
+    let debugX = []
+    let debugY = []
 
-    spiro.drawTrail(time, true, 1/3, Math.PI)
-    spiro.moveRadii(time, 1/3)
-    spiro.wheels[0].position.z = -15 + 5*Math.sin(time)
 
-    controls.updateCamera(camera, orbitControls, keysPressed, clock.getDelta())
     lightControls.updateLights(keysPressed, time)
-    midiController.updateCursor(time, midiKeysPressed);
-//     console.log(midiKeysPressed[0])
+    let monoCol = monoGeo.getAttribute('color').array
+    for(let i=0; i<monoCol.length; i+=3) {
+        const ind = Math.floor(i/3)
+        const uv = new THREE.Vector2(ind%monoRes / (monoRes-1), 1 -  Math.floor(ind/monoRes) / (monoRes-1))
+        uv.add(new THREE.Vector2(-0.5, -0.5));
+        uv.multiplyScalar(2)
 
-    for(let k in midiKeysPressed[0]) {
-        if (midiKeysPressed[0][k] == true) {
-            let scl = ((k as unknown as number) - 50)/20
-            glassSphere.scale.set(scl,scl,scl)
-            hilbert.curve.position.x += scl - 0.8
-            hilbert2.position.x -= scl - 0.8
-        }
+        debugX.push(uv.x)
+        debugY.push(uv.y)
+
+        let col = getColor(uv, time);
+        monoCol[i + 0] = col.r
+        monoCol[i + 1] = col.g
+        monoCol[i + 2] = col.b
     }
-//     for(let k in midiKeysPressed[1]) {
-//             if (midiKeysPressed[1][k] == true) {
-//                 let scl = ((k as unknown as number) - 50)/20
-//                 glassSphere.scale.set(scl,scl,scl)
-//             }
-//         }
+    monoGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(monoCol), 3))
 
-    let latticeWaveArray:Float32Array = wave(latticeArray, Math.max(0, 5-time/2), 2, 1, time)
-    let latticeWaveCols:Float32Array = new Float32Array(latticeWaveArray.length)
-    for(let i=0; i<latticeWaveArray.length; i+=3) {
-        let ind = Math.floor(i/3)
-        let newCol = new THREE.Color(ind/latticeWaveArray.length, (ind+1)/latticeWaveArray.length, (ind+2)/latticeWaveArray.length)
-        latticeWaveCols[3*ind] = newCol.r
-        latticeWaveCols[3*ind+1] = 0
-        latticeWaveCols[3*ind+2] = newCol.b/4
-    }
-    latticeMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(latticeWaveArray, 3))
-    latticeMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(latticeWaveCols, 3))
-
-
-
+//     if (time > 0.5 && time < 0.6) console.log(1)
 
     camera.updateProjectionMatrix()
     stats.update()
@@ -176,3 +109,38 @@ function animate() {
 }
 animate()
 // renderer.setAnimationLoop(animate);
+
+function map(p:THREE.Vector3, time:number):number {
+    return p.length() - 1 + Math.sin(time)/2
+}
+
+function getColor(uv:THREE.Vector2, time:number):THREE.Color{
+    let ro = new THREE.Vector3(0,0,-3)
+    let rd = new THREE.Vector3(uv.x,uv.y,1)
+    rd.normalize()
+//     if (time > 0.3 && time < 0.4 && uv.x < -0.97 && uv.y < -0.97) console.log(rd)
+
+    let col = new THREE.Vector3(0,0,0)
+
+    let t=0;
+
+    //RayMarching
+    for(let i=0; i<40; i++) {
+        let p = ro.clone().add(rd.clone().multiplyScalar(t))
+
+        let d = map(p, time)
+//         if (time > 0.3 && time < 0.4 &&
+//             Math.abs(uv.x) < 0.01 && Math.abs(uv.y) < 0.01 &&
+// //             uv.x < -0.97 && uv.y < -0.97 &&
+//             i < 9
+//             ) {console.log(i, ro)}
+        t += d;
+        if (t > 20) break;
+        if (d < 0.001) break;
+    }
+
+    col = new THREE.Vector3(t*0.2,t*0.2,t*0.2)
+
+    let ret = new THREE.Color(col.x, col.y, col.z)
+    return ret.convertSRGBToLinear();
+}
