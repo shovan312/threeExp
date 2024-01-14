@@ -8,7 +8,7 @@ varying vec3 vNormal;
 varying vec2 vUv;
 
 vec3 palette(float t) {
-    return .5+.5*cos(6.28318*(t+vec3(.3,.416,.557)));
+    return .5+.5*cos(6.28318*(t+vec3(.3,.516,.557)));
 }
 
 mat2 rot2D(float angle) {
@@ -37,25 +37,31 @@ float sdBox(vec3 p, vec3 b) {
 
 float map(vec3 p, float uTime) {
 
-    p = mod(p, min(1., max(0., uTime - 3.) - 5.)) - .5;
-    float boxSize = max(.1, 12./16. - uTime/16.);
-    float box = sdBox(p, vec3(boxSize))/boxSize;
-    p.y -= abs(sin(uTime * 1.2));
-    float sphere = sdSphere(p, boxSize)*boxSize;
-    return min(box, sphere);
+    p = mod(p,1.2) - .5;
+    //p.y -= abs(sin(uTime * 1.2))/3.;
+    float boxSize = 0.1;
+    float box = sdBox(p, vec3(boxSize));
+    //p.z *= sin(sin(uTime));
+    p.x += 0.3;
+    float sphere1 = sdSphere(p, boxSize);
+    p.x -= 0.6;
+    float sphere2 = sdSphere(p, boxSize);
+    return min(box,1.);
 }
 
 
 
 void main() {
     vec2 uv = (vUv - .5)*2.;
-    vec2 m;
-    if (uTime > 20.) m = (uMouse - .5)*2.;
-    else m = vec2(0.4*sin(1.57 + 1.4*uTime), 0.4*cos(1.57 + 1.4*uTime));
+    vec2 m; float mTime = 100.;
+    if (uTime > mTime) m = (uMouse - .5)*2.;
+    else m = vec2(0.4*sin(1.57 + 0.2*uTime), 0.4*cos(1.57 + 0.2*uTime));
 
     //origin and direction
     vec3 ro = vec3(0,0,-3);
     vec3 rd = normalize(vec3(uv, 1));
+    if (uv.x > 0.5) rd *= -1.;
+    if (uv.y > sin(uTime*0.2) - 2./3. && uv.y < 0.) rd *= -1.;
 
     //rotation
     ro.yz *= rot2D(-m.y*2.);
@@ -67,13 +73,15 @@ void main() {
 
     float t=0.;
     int i;
-    int steps = 60;
+    int steps = 50;
     for(i=0; i<steps; i++) {
         vec3 p = ro + rd*t;
 
         //p.y += sin(t)*.5;
-        //p.xy *= rot2D(uTime*.2);
-
+        p.yz *= rot2D(uTime*.2);
+        //ro.xz *= rot2D(uTime*.07);
+        //rd.xy *= rot2D(uTime*0.001);
+        //rd.y += 0.01*sin(uTime);
         float d = map(p, uTime);
 
         t += d;
@@ -86,8 +94,10 @@ void main() {
 
 
 
-	vec3 color = palette(t*.05 + float(i)*0.02);
-	//vec3 color = vec3(float(i)/float(steps));
+	vec3 color;
+	color = palette(t*.05);
+	if (uv.y > sin(uTime*0.2) - 2./3.) {color = vec3(float(i)/float(steps));}
+	if (uv.x > 0.5) {color = palette(t*.05 + float(i)*0.02);}
 	gl_FragColor = vec4(color, 1);
 }
 `;
