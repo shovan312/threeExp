@@ -18,8 +18,6 @@ import {fract} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements"
 import {CameraControls} from "./controls/camera";
 import {Light} from "./controls/light";
 import {Hilbert} from "./helpers/hilbert/hilbert"
-import {loadMidi, MidiController} from "./controls/midi"
-import {Midi} from "@tonejs/midi";
 //@ts-ignore
 import vertexShader from './shaders/vertexbasic.glsl'
 //@ts-ignore

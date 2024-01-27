@@ -7,9 +7,12 @@ varying vec3 vPosition;
 varying vec3 vNormal;
 varying vec2 vUv;
 
+#define PI 3.14159265359
+
 vec3 palette(float t) {
     return .5+.5*cos(6.28318*(t+vec3(.3,.516,.557)));
 }
+float dot2( in vec3 v ) { return dot(v,v); }
 
 mat2 rot2D(float angle) {
     float s = sin(angle);
@@ -53,78 +56,157 @@ float sdBoxFrame( vec3 p, vec3 b, float e )
         length(max(vec3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));
 }
 
-float map(vec3 p, float uTime) {
-    p = mod(p, 1.) - 0.5;
-    vec3 boxSize = vec3(.5 * abs(sin(1.57 + max(0., (uTime-25.)*.4))));
-    if ((uTime - 25.)*.4 > 3.14*3.) boxSize = vec3(.5);
-    float boxFrame = sdBoxFrame(p, boxSize, boxSize.x / 20.);
-    float box = sdBox(p, boxSize/5. * abs(sin(max(0., uTime - 4.5))) * 1.2);
 
-    return min(boxFrame, box);
+float sdCylinder( vec3 p, vec3 c )
+{
+  return length(p.xz-c.xy)-c.z;
+}
+
+float udTriangle( vec3 p, vec3 a, vec3 b, vec3 c )
+{
+  vec3 ba = b - a; vec3 pa = p - a;
+  vec3 cb = c - b; vec3 pb = p - b;
+  vec3 ac = a - c; vec3 pc = p - c;
+  vec3 nor = cross( ba, ac );
+
+  return sqrt(
+    (sign(dot(cross(ba,nor),pa)) +
+     sign(dot(cross(cb,nor),pb)) +
+     sign(dot(cross(ac,nor),pc))<2.0)
+     ?
+     min( min(
+     dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
+     dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
+     dot2(ac*clamp(dot(ac,pc)/dot2(ac),0.0,1.0)-pc) )
+     :
+     dot(nor,pa)*dot(nor,pa)/dot2(nor) );
+}
+
+float udQuad( vec3 p, vec3 a, vec3 b, vec3 c, vec3 d )
+{
+  vec3 ba = b - a; vec3 pa = p - a;
+  vec3 cb = c - b; vec3 pb = p - b;
+  vec3 dc = d - c; vec3 pc = p - c;
+  vec3 ad = a - d; vec3 pd = p - d;
+  vec3 nor = cross( ba, ad );
+
+  return sqrt(
+    (sign(dot(cross(ba,nor),pa)) +
+     sign(dot(cross(cb,nor),pb)) +
+     sign(dot(cross(dc,nor),pc)) +
+     sign(dot(cross(ad,nor),pd))<3.0)
+     ?
+     min( min( min(
+     dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
+     dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
+     dot2(dc*clamp(dot(dc,pc)/dot2(dc),0.0,1.0)-pc) ),
+     dot2(ad*clamp(dot(ad,pd)/dot2(ad),0.0,1.0)-pd) )
+     :
+     dot(nor,pa)*dot(nor,pa)/dot2(nor) );
+}
+
+float sdRoundBox( vec3 p, vec3 b, float r )
+{
+  vec3 q = abs(p) - b;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
+}
+
+float sdTorus( vec3 p, vec2 t )
+{
+  vec2 q = vec2(length(p.xz)-t.x,p.y);
+  return length(q)-t.y;
+}
+
+float sdPlane( vec3 p, vec3 n, float h )
+{
+  // n must be normalized
+  return dot(p,n) + h;
+}
+
+float repeated(vec3 p, float size, float uTime) {
+    float box = sdRoundBox(p, vec3(1.2), .0);
+
+    vec3 planeP = p;
+    planeP.yz *= rot2D(uTime);
+    planeP.xz *= rot2D(uTime*1.4);
+    planeP.z += sin(uTime);
+    float planeSize = 2.5;
+    float plane = udQuad(planeP, 
+        vec3(planeSize, 0., 0.),
+        vec3(0., planeSize, 0.),
+        vec3(-planeSize, 0., 0.),
+        vec3(0.,-planeSize, 0.)
+        );
+
+
+    vec3 torusP = p;
+    torusP.xy *= rot2D(2.*uTime);
+    vec2 torusSize = vec2(2. + 0.5*sin(uTime), .2);
+    float torus = sdTorus(torusP, torusSize);
+
+    vec3 triangleP = p;
+    triangleP.z -= 5.*sin(uTime);
+    triangleP.y -= 4.;
+    triangleP.x -= 2.*sin(uTime*4.2) + .7*cos(uTime*2.4);
+    triangleP.yz *= rot2D(6.*uTime);
+    triangleP.xz *= rot2D(2.5*uTime);
+    float triangle = udTriangle(triangleP, 
+        vec3(0.,-.6,0.),
+        vec3(0.,1.,0.),
+        vec3(1.,-1.,0.)
+        );
+
+    float centralScene = min(torus, min(plane, box));
+    centralScene = min(centralScene, triangle);
+
+    vec3 id = round(p);
+    p = fract(p) - .5;
+    float latticePoint;
+    if (id.y < 0.) {
+        latticePoint = sdSphere(p, 0.01 + 0.02*abs(sin(uTime)));
+    } else {
+        latticePoint = sdSphere(p, 0.0);
+    }
+    return smin(centralScene, latticePoint, 2.*sin(uTime));
 }
 
 
 
 void main() {
     vec2 uv = (vUv - .5)*2.;
-    vec2 m; float mTime = 0.;
-    if (uTime > mTime) m = (uMouse - .5)*2.;
-    else m = vec2(0.4*sin(1.57 + 0.2*uTime), 0.4*cos(1.57 + 0.2*uTime));
+
 
     //origin and direction
-    vec3 ro = vec3(0.2,0.2,-3);
+    vec3 ro = vec3(0.,.2,-5. - 2.5*sin(uTime*0.));
     vec3 rd = normalize(vec3(uv, 1));
 
-    // if (uv.x > 0.5) rd *= -1.;
-    //if (uv.y > sin(uTime*0.2) - 2./3. && uv.y < 0.) rd *= -1.;
 
-    //rotation
+    //lookback camera
+    // if (uv.x > 0.5) rd *= -1.;
+
+    //mouse controls
+    vec2 m; float mTime = 20.;
+    if (uTime > mTime) m = (uMouse - .5)*2.;
+    else m = vec2(0.4*sin(PI/2. + 1.*uTime), 0.4*cos(PI/2. + 1.*uTime));
+    //mouse rotation
     ro.yz *= rot2D(-m.y*2.);
     rd.yz *= rot2D(-m.y*2.);
 
     ro.xz *= rot2D(-m.x*2.);
     rd.xz *= rot2D(-m.x*2.);
 
-
-
     float t=0.;
     int i;
     int steps = 75;
     for(i=0; i<steps; i++) {
         vec3 p = ro + rd*t;
-
-        if (uTime < 4.5) {
-            p.y += sin(t/3. + uTime*1.7)*.5;
-            p.x -= 1.2*sin(t/3.)*.5;
-        }
-        else if (uTime >= 4.5 && uTime < 9.){
-            p.y += sin(t/3. + uTime*1.7)*.5;
-            p.x -= 1.2*sin(t/3. + max(0., uTime-4.5)*1.3)*.5;
-
-        }
-        else if (uTime >= 9. && uTime < 13.5) {
-            p.y += sin(t/3. + uTime*1.7)*.5;
-            p.x -= 1.2*sin(t/3. + max(0., uTime-4.5)*1.3)*.5;
-            p.xy *= rot2D(max(0., uTime - 9.)*1.);
-
-        }
-        else {
-            p.y += sin(t/3. + 13.5*1.7)*.5;
-            p.x -= 1.2*sin(t/3. + (13.5 - 4.5)*1.3)*.5;
-            p.xy *= rot2D(max(0., 13.5 - 9. - uTime+13.5)*1.);
-
-            // float k;
-            // if (uTime < 20.) k = 1.;
-            // else k = 1. / (5.*(uTime - 19.));
-            rd.xy *= rot2D(t*0.01*(uTime - 13.5));
-
-        }
+        
         // p.x += cos(t/3. + uTime)*.5;
         // p.yz *= rot2D(uTime*.2);
         // rd.xy *= rot2D(t*0.01);
-        //rd.y += 0.01*sin(uTime*10.);
-        p.z += uTime;
-        float d = map(p, uTime);
+        // rd.y += 0.01*sin(uTime*10.);
+        // p.z += uTime;
+        float d = repeated(p, 1., uTime);
 
         t += d;
 
@@ -133,13 +215,11 @@ void main() {
     }
 
 
-
-
-
 	vec3 color;
-    color = palette(t*.05 + float(i)/float(steps)*.5);
-	// if (uv.y > sin(uTime*0.2) - 2./3.) {color = vec3(float(i)/float(steps));}
-	// if (uv.x > 0.5) {color = palette(t*.05 + float(i)*0.02);}
+    //t = total distance travelled, i = number of steps
+    color = vec3(t*.05 + float(i)/float(steps)*.5);
+    // color = palette(float(i)/float(steps)*.5);
+    // if (i > 50) color = palette(1.3);
 	gl_FragColor = vec4(color, 1);
 }
 `;
