@@ -249,75 +249,37 @@ vec4 opElongate( in vec3 p, in vec3 h )
 
 ///////////////////////////////
 
-vec4 centralScene(vec3 p) {
-    float k = 2.;
-    float cubeSize = .7/k;
-    float cubePathRadius = 5./k;
-    vec2 torusSize = vec2(2., .2)/k;
-
-    vec3 cubeP = p;
-    cubeP.x += cubePathRadius + cubePathRadius*cos(uTime);
-    cubeP.y += cubePathRadius*sin(uTime);
-    cubeP.xy *= rot2D(uTime);
-    float cube1Dist = sdBox(cubeP, vec3(cubeSize, cubeSize, cubeSize));
-
-    cubeP = p;
-    cubeP.x += -cubePathRadius - cubePathRadius*cos(uTime);
-    cubeP.z += cubePathRadius*sin(uTime);
-    cubeP.xy *= rot2D(uTime);
-    float cube2Dist = sdBox(cubeP, vec3(cubeSize, cubeSize, cubeSize));
-
-    vec3 torusP = p;
-    torusP.yz *= rot2D(2.*uTime);
-    float torusDist = sdTorus(torusP, torusSize);
-    // return min(torus, min(cube1, cube2));
-    vec4 cube1 = vec4(cube1Dist, vec3(1.,0.,0.));
-    vec4 cube2 = vec4(cube2Dist, vec3(0.,1.,0.));
-    vec4 torus = vec4(torusDist, vec3(0.,0.,1.));
-    vec4 ret;
-    ret = cube1.x < cube2.x ? cube1 : cube2;
-    ret = ret.x < torus.x ? ret : torus;
-    return ret;
+float getShape(float id, vec3 p) {
+  // if (id > 0. && id < 1.) {
+    return sdSphere(p, 0.05);
+  // }
+  // if (id > 10. && id < 20.) {
+  //   return sdBox(p, vec3(0.05));
+  // }
 }
-
-vec2 getVectorField(vec2 pos, float uTime) {
-    float r = 0.1;
-    vec2 vector = 2.*sin(pos + 10.*uTime);
-    return r*(vector);
-}
-
-vec4 getVector(vec3 p, vec2 pos) {
-    float r = length(pos);
-    float theta = atan(pos.y,pos.x);
-
-    p.xy *= rot2D(PI/2. - theta);
-    return vec4(sdVerticalCapsule(p, r, 0.03), vec3(0.,0.,0.));
-}
-
-
 
 vec4 repeated(vec3 p, float size, float uTime, sampler2D texture1) {
-    vec4 centralScene1 = centralScene(p);
-    vec3 p2 = p;
-    p2.xy = abs(p2.xy) - clamp(15. - uTime, 5., 15.);
-    vec4 centralScene2 = centralScene(p2);
-    vec4 centralScene = centralScene1.x < centralScene2.x ? centralScene1 : centralScene2;
+    // p.z += uTime*.7;
+    // p.x += 0.2*sin(uTime + p.z);
 
+    float id = round(p.x - .5);
+    float id2 = round(p.z - .5);
+    p.x = fract(p.x) - .5;
+    p.z = mod(p.z, 0.25) - 0.125;
 
-    vec3 id = round(p - .5);
-    p.xy = fract(p.xy) - .5;
-    // vec4 code = getCodePixel(p, texture);
-    vec4 vector = getVector(p, getVectorField(id.xy + .5, uTime));
+    // float latticePoint = sdSphere(p, .05);
+    float latticePoint = getShape(id2, p);
+    vec3 latticeCol = vec3(.5, 0., 0.);
+    // vec3 latticeCol = palette(abs(id)/20.);
 
-    p.z += 2.;
-    vec4 vector2 = getVector(p, 1.5*getVectorField(id.xy + .5, uTime/6.));
+    if (abs(id) > 5.) {
+      latticePoint = 1000.0;
+      latticeCol = vec3(0., 0., 0.);
+    }
 
-    // return smin(min(vector.x, vector2.x), centralScene.x, 0.);
-    vec4 ret;
-    ret = vector.x < vector2.x ? vector : vector2;
-    ret = ret.x < centralScene.x ? ret : centralScene;
-    return centralScene;
+    return vec4(latticePoint, latticeCol);
 }
+
 
 
 
@@ -367,25 +329,40 @@ void main() {
     int i;
     int steps = 75;
     vec4 d;
+    vec4 d2;
     vec3 color=vec3(0.);
     for(i=0; i<steps; i++) {
         vec3 p = ro + rd*t;
-        
-        d = repeated(p, 1., uTime, texture1);
-        t += d.x;
+
+        // p.x += sin(p.z)*2./p.z*(p.x/abs(p.x));
+        // p.y += 2.*sin(uTime/7.);
+        vec3 p1 = p;
+        p1.x -= 2.*sin(uTime/4.);
+        p1.yz *= rot2D(PI/2.*sin(uTime/20.));
+        p1.xy *= rot2D(uTime/2.);
+        p1.x += sin(p1.z)*.2;
+        p1.y += sin(p1.z)*.2;
+        d2 = repeated(p1, 1., uTime, texture1);
+
+        vec3 p2 = p;
+        p2.y += .2*sin(p2.z + uTime*2.);
+        p2.xy *= rot2D(p2.z*0.2);
+        p2.z += uTime*.7;
+        d = repeated(p2, 1., uTime, texture1);
+        t += min(d.x, d2.x);
 
         // color += textureCol;
 
         if (t > 100.) break;
-        if (d.x < 0.001) break;
+        if (d2.x < 0.001 && d.x < 0.001) break;
     }
 
 
-	color += d.yzw;
+	  color += d2.yzw;
     //t = total distance travelled, i = number of steps
-    // color += vec3(t*.02 + float(i)/float(steps)*.5);
+    color += vec3(t*.02 + 0.*float(i)/float(steps)*.5);
     // color += palette(t*.0000 +float(i)/float(steps)*.5);
-    if (i > 80) color = vec3(.4);
-	gl_FragColor = vec4(mix(color, textureCol, 0.), 1);
+    // if (i > 80) color = vec3(.4);
+	  gl_FragColor = vec4(mix(color, textureCol, 0.), 1);
 }
 `;
