@@ -249,73 +249,25 @@ vec4 opElongate( in vec3 p, in vec3 h )
 
 ///////////////////////////////
 
-float getShape(float id, vec3 p) {
-  // if (id > 0. && id < 1.) {
-    return sdSphere(p, 0.05);
-  // }
-  // if (id > 10. && id < 20.) {
-  //   return sdBox(p, vec3(0.05));
-  // }
-}
-
-vec4 repeated(vec3 p, float size, float uTime, sampler2D texture1) {
-    // p.z += uTime*.7;
-    // p.x += 0.2*sin(uTime + p.z);
-
-    float id = round(p.x - .5);
-    float id2 = round(p.z - .5);
-    p.x = fract(p.x) - .5;
-    p.z = mod(p.z, 0.25) - 0.125;
-
-    // float latticePoint = sdSphere(p, .05);
-    float latticePoint = getShape(id2, p);
-    vec3 latticeCol = vec3(.5, 0., 0.);
-    // vec3 latticeCol = palette(abs(id)/20.);
-
-    if (abs(id) > 5.) {
-      latticePoint = 1000.0;
-      latticeCol = vec3(0., 0., 0.);
+vec3 getTexture(vec2 vUv, sampler2D texture1) {
+    vec3 textureCol = texture2D(texture1, vUv).xyz;
+    bool isRed = false;
+    for(float i=0.; i<.02; i+=0.01) {
+        vec2 tempUv = vUv + vec2(0., i);
+        vec3 tempCol = texture2D(texture1, tempUv).xyz;
+        if (tempCol.x > .4) {
+            isRed = true;
+        }
     }
 
-    return vec4(latticePoint, latticeCol);
+    if (isRed ) {
+        textureCol = vec3(0.,0.,0.);
+    }
+    return textureCol;
 }
 
-
-
-
-void main() {
-    vec2 uv = (vUv - .5)*2.;
-
-    vec2 textureUv = vUv;
-    // textureUv *= .5;
-    vec3 textureCol = texture2D(texture1, textureUv).xyz;
-
-    //move to new method
-    // bool isRed = false;
-    // for(float i=0.; i<.02; i+=0.01) {
-    //     vec2 tempUv = vUv + vec2(0., i);
-    //     vec3 tempCol = texture2D(texture1, tempUv).xyz;
-    //     if (tempCol.x > .4) {
-    //         isRed = true;
-    //     }
-    // }
-
-    // if (isRed ) {
-    //     textureCol = vec3(0.,0.,0.);
-    // }
-
-
-    //origin and direction
-    vec3 ro = vec3(0., 0., -5.);
-    // vec3 ro = vec3(0.,.2, max(-5. - 2.5*uTime*1., -10. + 5.*sin(uTime/2.)));
-    vec3 rd = normalize(vec3(uv, 1));
-
-
-    //lookback camera
-    // if (uv.x > 0.5) rd *= -1.;
-
-    //mouse controls
-    vec2 m; float mTime = 0.;
+void mouseControls(inout vec3 ro, inout vec3 rd, float uTime) {
+    vec2 m; float mTime = 30.;
     if (uTime > mTime) m = (uMouse - .5)*2.;
     else m = vec2(0.2*sin(PI/2. + .5*uTime), 0.2*cos(PI/2. + .5*uTime));
     //mouse rotation
@@ -324,45 +276,132 @@ void main() {
 
     ro.xz *= rot2D(-m.x*2.);
     rd.xz *= rot2D(-m.x*2.);
+}
 
-    float t=0.;
-    int i;
-    int steps = 75;
-    vec4 d;
-    vec4 d2;
+void makeColor(inout vec3 color, vec4 lastObj, float distTravelled, float normIterations) {
+    color += lastObj.yzw;
+    //t = total distance travelled, i = number of steps
+    color += vec3(distTravelled*.002 + normIterations*.5);//*uTime/5.;
+    // color += palette(distTravelled*.02 +normIterations*.5);
+    if (distTravelled > 100.) color = vec3(.4);
+    // if (color.x > .99 ) {color = vec3(.4);}
+}
+
+vec4 getNextStep(vec3 p, float uTime, float sceneId) {
+    if (length(p) > 35.) {
+      return vec4(0., vec3(0.));
+    }
+
+    vec3 id;
+    id.x = round(p.x );
+    p.x = mod(p.x, 2.) - 1.;
+    id.z = round(p.z/0.25 - 2.*0.25);
+    p.z = mod(p.z, 0.25) - 0.125;
+
+
+    float latticePoint; vec3 latticeCol;
+    if (sceneId - 0. < 0.1) {
+      latticePoint = sdBox(p, vec3(.05));
+      float zColChange = id.z + 10.*(1. + sin(uTime));
+      latticeCol = vec3(0., .7 - zColChange/10., 1. - zColChange/5.);
+    }
+    else if (sceneId - 1. < .1) {
+      if (mod(id.z, 2.) < 1.) {
+        latticePoint = sdSphere(p, .05);
+      }
+      else {
+        latticePoint = sdBox(p, vec3(.05));
+      }
+      float zColChange = id.z + 7.*(1. + sin(uTime));
+      latticeCol = vec3(.4, .9 - zColChange/9., .1);
+    }
+
+    if (abs(id.x) > 5.) {
+      latticePoint = 0.0;
+      latticeCol = vec3(0., 0., 0.);
+    }
+
+    return vec4(latticePoint, latticeCol);
+}
+
+vec4 getNextStep2(vec3 p, float uTime) {
+  if(length(p) > 35.) return vec4(0., vec3(0.));
+
+  vec3 id;
+  id.x = round(p.x);
+  p.x = mod(p.x, 2.) - 1.;
+  id.z = round(p.z/0.25 - 2.*0.25);
+  p.z = mod(p.z, 0.25) - 0.125;
+
+  float latticePoint; vec3 latticeCol;
+  latticePoint = sdSphere(p, 0.07);
+  latticeCol = vec3(8., .8 + .09*sin(uTime), 0.);
+
+  if (abs(id.x) > 7.) {
+    return vec4(0., vec3(0.));
+  }
+
+  return vec4(latticePoint, latticeCol);
+
+
+}
+
+
+void main() {
+    vec2 uv = (vUv - .5)*2.;
+
+    vec2 textureUv = vUv*.5;
+    vec3 textureCol = getTexture(textureUv, texture1);
+
+    //origin and direction
+    vec3 ro = vec3(0., 0., -5.);
+    vec3 rd = normalize(vec3(uv, 1));
+
+    //lookback camera
+    // if (uv.x > 0.5) rd *= -1.;
+    mouseControls(ro, rd, uTime);
+
+    float t=0.; int i; int steps = 75;
+    vec4 lastObj;
     vec3 color=vec3(0.);
     for(i=0; i<steps; i++) {
         vec3 p = ro + rd*t;
 
-        // p.x += sin(p.z)*2./p.z*(p.x/abs(p.x));
-        // p.y += 2.*sin(uTime/7.);
         vec3 p1 = p;
-        p1.x -= 2.*sin(uTime/4.);
-        p1.yz *= rot2D(PI/2.*sin(uTime/20.));
-        p1.xy *= rot2D(uTime/2.);
-        p1.x += sin(p1.z)*.2;
-        p1.y += sin(p1.z)*.2;
-        d2 = repeated(p1, 1., uTime, texture1);
+        float k = .5 + .4*sin(uTime/2.7);
+        p1.xy *= rot2D(p1.z*k + uTime);
+        // p1.y += .3*sin(p1.z);
+        vec4 d1 = getNextStep(p1, uTime, 0.);
 
         vec3 p2 = p;
-        p2.y += .2*sin(p2.z + uTime*2.);
-        p2.xy *= rot2D(p2.z*0.2);
-        p2.z += uTime*.7;
-        d = repeated(p2, 1., uTime, texture1);
-        t += min(d.x, d2.x);
+        p2.yz *= rot2D(PI/2.);
+        p2.yz *= rot2D(uTime/3.);
+        p2.xy *= rot2D(uTime/2.);
+        p2.y += .4*sin(p2.z + uTime*2.);
+        vec4 d2 = getNextStep(p2, uTime, 1.);
 
-        // color += textureCol;
+        vec3 p3 = p;
+        p3.xy *= rot2D(-p.z*.3* + p.x*2.*sin(uTime));
+        p3.y -= 2.7;
+        p3.x -= 2.7;
+        p3.xz *= rot2D(PI/2.);
+        p3.yz *= rot2D(-PI/6.);
+        // p3.y -= 0.003*p3.z*p3.z;
+        p3.xy *= rot2D(uTime/2.);
+        vec4 d3 = getNextStep2(p3, uTime);
 
-        if (t > 100.) break;
-        if (d2.x < 0.001 && d.x < 0.001) break;
+        lastObj = d3;
+        if (d3.x < d1.x) lastObj = d3; else lastObj = d1;
+        if (lastObj.x > d2.x) lastObj = d2;
+
+        t += lastObj.x;
+
+        if (t > 500.) break;
+        if (lastObj.x < 0.001) break;
     }
 
 
-	  color += d2.yzw;
-    //t = total distance travelled, i = number of steps
-    color += vec3(t*.02 + 0.*float(i)/float(steps)*.5);
-    // color += palette(t*.0000 +float(i)/float(steps)*.5);
-    // if (i > 80) color = vec3(.4);
-	  gl_FragColor = vec4(mix(color, textureCol, 0.), 1);
+	  makeColor(color, lastObj, t, float(i)/float(steps));
+	  gl_FragColor = vec4(color, 1);
 }
 `;
