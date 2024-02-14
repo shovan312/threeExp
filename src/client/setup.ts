@@ -144,6 +144,7 @@ export function loadTextures() {
     let nrmlText0 = textureLoader.load('./Water_1_M_Normal.jpg');
     let nrmlText1 = textureLoader.load('./Water_2_M_Normal.jpg');
     let rainbowText = textureLoader.load('./rainbow.jpg')
+    let codeText = textureLoader.load('./codeScreenshot1.jpeg')
 
     let cubeTexture = new THREE.CubeTextureLoader().load([
         'paperSquare.png',
@@ -155,7 +156,7 @@ export function loadTextures() {
     ])
 
     cubeTexture.anisotropy = 0.1
-    return [flowText, nrmlText0, nrmlText1, rainbowText, cubeTexture]
+    return [flowText, nrmlText0, nrmlText1, rainbowText, cubeTexture, codeText]
 }
 
 export function makeWater(flowText:THREE.Texture, nrmlText0:THREE.Texture, nrmlText1:THREE.Texture) {

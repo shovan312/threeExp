@@ -2,6 +2,7 @@ export default /*glsl*/`
 
 uniform float uTime;
 uniform vec2 uMouse;
+uniform sampler2D texture1;
 
 varying vec3 vPosition;
 varying vec3 vNormal;
@@ -128,6 +129,12 @@ float sdPlane( vec3 p, vec3 n, float h )
   return dot(p,n) + h;
 }
 
+float sdVerticalCapsule( vec3 p, float h, float r )
+{
+  p.y -= clamp( p.y, 0.0, h );
+  return length( p ) - r;
+}
+
 ///////////////////////////////
 //2d Primitive//
 ///////////////////////////////
@@ -242,81 +249,74 @@ vec4 opElongate( in vec3 p, in vec3 h )
 
 ///////////////////////////////
 
-float centralScene(vec3 p) {
+vec4 centralScene(vec3 p) {
     float k = 2.;
     float cubeSize = .7/k;
-    float cubePathRadius = 3./k;
+    float cubePathRadius = 5./k;
     vec2 torusSize = vec2(2., .2)/k;
 
     vec3 cubeP = p;
     cubeP.x += cubePathRadius + cubePathRadius*cos(uTime);
     cubeP.y += cubePathRadius*sin(uTime);
     cubeP.xy *= rot2D(uTime);
-    float cube1 = sdBox(cubeP, vec3(cubeSize, cubeSize, cubeSize));
+    float cube1Dist = sdBox(cubeP, vec3(cubeSize, cubeSize, cubeSize));
 
     cubeP = p;
     cubeP.x += -cubePathRadius - cubePathRadius*cos(uTime);
     cubeP.z += cubePathRadius*sin(uTime);
     cubeP.xy *= rot2D(uTime);
-    float cube2 = sdBox(cubeP, vec3(cubeSize, cubeSize, cubeSize));
+    float cube2Dist = sdBox(cubeP, vec3(cubeSize, cubeSize, cubeSize));
 
     vec3 torusP = p;
     torusP.yz *= rot2D(2.*uTime);
-    float torus = sdTorus(torusP, torusSize);
-    return min(torus, min(cube1, cube2));
+    float torusDist = sdTorus(torusP, torusSize);
+    // return min(torus, min(cube1, cube2));
+    vec4 cube1 = vec4(cube1Dist, vec3(1.,0.,0.));
+    vec4 cube2 = vec4(cube2Dist, vec3(0.,1.,0.));
+    vec4 torus = vec4(torusDist, vec3(0.,0.,1.));
+    vec4 ret;
+    ret = cube1.x < cube2.x ? cube1 : cube2;
+    ret = ret.x < torus.x ? ret : torus;
+    return ret;
 }
 
 vec2 getVectorField(vec2 pos, float uTime) {
-    return vec2(1., pos.y*2. + pos.x + uTime*9.);
+    float r = 0.1;
+    vec2 vector = 2.*sin(pos + 10.*uTime);
+    return r*(vector);
+}
+
+vec4 getVector(vec3 p, vec2 pos) {
+    float r = length(pos);
+    float theta = atan(pos.y,pos.x);
+
+    p.xy *= rot2D(PI/2. - theta);
+    return vec4(sdVerticalCapsule(p, r, 0.03), vec3(0.,0.,0.));
 }
 
 
-float repeated(vec3 p, float size, float uTime) {
 
-    float centralScene1 = centralScene(p);
+vec4 repeated(vec3 p, float size, float uTime, sampler2D texture1) {
+    vec4 centralScene1 = centralScene(p);
     vec3 p2 = p;
     p2.xy = abs(p2.xy) - clamp(15. - uTime, 5., 15.);
-
-    float centralScene2 = centralScene(p2);
-
-    float centralScene = min(centralScene1, centralScene2);
+    vec4 centralScene2 = centralScene(p2);
+    vec4 centralScene = centralScene1.x < centralScene2.x ? centralScene1 : centralScene2;
 
 
-    vec2 id = round(p.xy - 0.5);
-    p.xy = fract(p.xy) - 0.5;
+    vec3 id = round(p - .5);
+    p.xy = fract(p.xy) - .5;
+    // vec4 code = getCodePixel(p, texture);
+    vec4 vector = getVector(p, getVectorField(id.xy + .5, uTime));
 
-    // if (abs(p.z) < 1.) {
-    //     p.z = fract(p.z);
-    // }
+    p.z += 2.;
+    vec4 vector2 = getVector(p, 1.5*getVectorField(id.xy + .5, uTime/6.));
 
-    float sideLen = .4;
-    vec3 a = sideLen*vec3(cos(0.*2.*PI/3.), sin(0.*2.*PI/3.), 0.);
-    vec3 b = sideLen*vec3(cos(1.*2.*PI/3.), sin(1.*2.*PI/3.), 0.);
-    vec3 c = sideLen*vec3(cos(2.*2.*PI/3.), sin(2.*2.*PI/3.), 0.);
-    b /= 10.;
-    c /= 10.;
-    
-    // if(mod(id.x, 2.) > 0.) {
-    //     a.xy *= rot2D(PI/6.);
-    //     b.xy *= rot2D(PI/6.);
-    //     c.xy *= rot2D(PI/6.);
-    // }
-
-    // float yMod = mod(id.y, 5.);
-    vec2 vecField = getVectorField(id, uTime);
-    a.xy *= rot2D(PI/10. * vecField.y);
-    b.xy *= rot2D(PI/10. * vecField.y);
-    c.xy *= rot2D(PI/10. * vecField.y);
-
-    a *= vecField.x;
-    b *= vecField.x;
-    c *= vecField.x;
-
-    float triangle;
-    triangle = udTriangle(p, a, b, c);
-
-
-    return smin(triangle, centralScene, 1. + sin(PI + uTime));
+    // return smin(min(vector.x, vector2.x), centralScene.x, 0.);
+    vec4 ret;
+    ret = vector.x < vector2.x ? vector : vector2;
+    ret = ret.x < centralScene.x ? ret : centralScene;
+    return centralScene;
 }
 
 
@@ -324,9 +324,28 @@ float repeated(vec3 p, float size, float uTime) {
 void main() {
     vec2 uv = (vUv - .5)*2.;
 
+    vec2 textureUv = vUv;
+    // textureUv *= .5;
+    vec3 textureCol = texture2D(texture1, textureUv).xyz;
+
+    //move to new method
+    // bool isRed = false;
+    // for(float i=0.; i<.02; i+=0.01) {
+    //     vec2 tempUv = vUv + vec2(0., i);
+    //     vec3 tempCol = texture2D(texture1, tempUv).xyz;
+    //     if (tempCol.x > .4) {
+    //         isRed = true;
+    //     }
+    // }
+
+    // if (isRed ) {
+    //     textureCol = vec3(0.,0.,0.);
+    // }
+
 
     //origin and direction
-    vec3 ro = vec3(0.,.2, max(-5. - 2.5*uTime*0.5, -20. + 5.*sin(uTime/3.)));
+    vec3 ro = vec3(0., 0., -5.);
+    // vec3 ro = vec3(0.,.2, max(-5. - 2.5*uTime*1., -10. + 5.*sin(uTime/2.)));
     vec3 rd = normalize(vec3(uv, 1));
 
 
@@ -336,7 +355,7 @@ void main() {
     //mouse controls
     vec2 m; float mTime = 0.;
     if (uTime > mTime) m = (uMouse - .5)*2.;
-    else m = vec2(0.4*sin(PI/2. + 1.*uTime), 0.4*cos(PI/2. + 1.*uTime));
+    else m = vec2(0.2*sin(PI/2. + .5*uTime), 0.2*cos(PI/2. + .5*uTime));
     //mouse rotation
     ro.yz *= rot2D(-m.y*2.);
     rd.yz *= rot2D(-m.y*2.);
@@ -347,22 +366,26 @@ void main() {
     float t=0.;
     int i;
     int steps = 75;
+    vec4 d;
+    vec3 color=vec3(0.);
     for(i=0; i<steps; i++) {
         vec3 p = ro + rd*t;
         
-        float d = repeated(p, 1., uTime);
-        t += d;
+        d = repeated(p, 1., uTime, texture1);
+        t += d.x;
+
+        // color += textureCol;
 
         if (t > 100.) break;
-        if (d < 0.001) break;
+        if (d.x < 0.001) break;
     }
 
 
-	vec3 color;
+	color += d.yzw;
     //t = total distance travelled, i = number of steps
-    color = vec3(t*.02 + float(i)/float(steps)*.5);
-    // color = palette(float(i)/float(steps)*.5);
-    if (i > 50) color = vec3(.4);
-	gl_FragColor = vec4(color, 1);
+    // color += vec3(t*.02 + float(i)/float(steps)*.5);
+    // color += palette(t*.0000 +float(i)/float(steps)*.5);
+    if (i > 80) color = vec3(.4);
+	gl_FragColor = vec4(mix(color, textureCol, 0.), 1);
 }
 `;

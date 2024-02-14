@@ -27,8 +27,8 @@ import fragmentShader from './shaders/raymarching.glsl'
 /////////////////////////
 let sceneBasicObjects:THREE.Object3D[] = []
 ////////////////////////
-let flowText:Texture,nrmlText0:Texture,nrmlText1:Texture,rainbowText:Texture,cubeTexture:Texture;
-[flowText, nrmlText0, nrmlText1, rainbowText, cubeTexture] = loadTextures()
+let flowText:Texture,nrmlText0:Texture,nrmlText1:Texture,rainbowText:Texture,cubeTexture:Texture,codeText:Texture;
+[flowText, nrmlText0, nrmlText1, rainbowText, cubeTexture, codeText] = loadTextures()
 /////////////////////////
 let gridHelper:GridHelper,
 axesHelper:AxesHelper,
@@ -63,7 +63,7 @@ let monoMat = new THREE.ShaderMaterial({
 });
 monoMat.uniforms.uTime = {value: 0}
 monoMat.uniforms.uMouse = {value: new THREE.Vector2(1/2,1/2)}
-
+monoMat.uniforms.texture1 = {value: codeText}
 
 let monoMesh = new THREE.Mesh(monoGeo, monoMat);
 scene.add(monoMesh)
