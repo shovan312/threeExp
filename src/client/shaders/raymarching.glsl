@@ -32,6 +32,17 @@ float smin(float a, float b, float k) {
     return min(a, b) - h*h*h*k*(1.0/6.0);
 }
 
+bool isPrime(int number) {
+    if (number <= 1) {
+        return false;
+    }
+    for (int i = 2; i <= int(sqrt(float(number))); ++i) {
+        if (number % i == 0) {
+            return false;
+        }
+    }
+    return true;
+}
 //3d Primitive//
 ///////////////////////////////
 
@@ -267,7 +278,7 @@ vec3 getTexture(vec2 vUv, sampler2D texture1) {
 }
 
 void mouseControls(inout vec3 ro, inout vec3 rd, float uTime) {
-    vec2 m; float mTime = 30.;
+    vec2 m; float mTime = 0.;
     if (uTime > mTime) m = (uMouse - .5)*2.;
     else m = vec2(0.2*sin(PI/2. + .5*uTime), 0.2*cos(PI/2. + .5*uTime));
     //mouse rotation
@@ -295,55 +306,41 @@ vec4 getNextStep(vec3 p, float uTime, float sceneId) {
     vec3 id;
     id.x = round(p.x );
     p.x = mod(p.x, 2.) - 1.;
+
+    float theta = PI - atan(p.y, -p.x);
+    float n = min(1. +  uTime/1., 17.);
+    // float n = 7.;
+    theta /= 2.*PI;
+    theta *= n;
+    theta = fract(theta);
+    theta *= 2.*PI/n;
+    p.xy = length(p.xy) * vec2(cos(theta),  sin(theta));
+
+    vec3 cubeP = p;
+    // cubeP.y -= .5/n;
+    cubeP.x -= .5;
+    cubeP.xy *= rot2D(PI/2. - uTime);
+    float cubeSDF = sdTorus(cubeP, vec2(1., 0.1));
+    // float cubeSDF = sdVerticalCapsule(cubeP, 1., 0.06);
+    vec3 cubeCol = vec3(0.0, 0.0, .0);
+
+
     id.z = round(p.z/0.25 - 2.*0.25);
     p.z = mod(p.z, 0.25) - 0.125;
 
-
     float latticePoint; vec3 latticeCol;
-    if (sceneId - 0. < 0.1) {
-      latticePoint = sdBox(p, vec3(.05));
-      float zColChange = id.z + 10.*(1. + sin(uTime));
-      latticeCol = vec3(0., .7 - zColChange/10., 1. - zColChange/5.);
-    }
-    else if (sceneId - 1. < .1) {
-      if (mod(id.z, 2.) < 1.) {
-        latticePoint = sdSphere(p, .05);
-      }
-      else {
-        latticePoint = sdBox(p, vec3(.05));
-      }
-      float zColChange = id.z + 7.*(1. + sin(uTime));
-      latticeCol = vec3(.4, .9 - zColChange/9., .1);
-    }
+    vec3 p1 = p;
+    p1.x -= 1.5*cos(PI/n);
+    p1.y -= 1.5*sin(PI/n);
+    latticePoint = sdBox(p1, vec3(.05));
+    // latticePoint = sdSphere(p1, .2);
+    float zColChange =  10.*(1. + sin(uTime));
+    latticeCol = vec3(0., .7 - zColChange/10., 1. - zColChange/5.);
 
-    if (abs(id.x) > 5.) {
-      latticePoint = 0.0;
-      latticeCol = vec3(0., 0., 0.);
-    }
+    vec4 lastObj = vec4(latticePoint, latticeCol);
+    if (cubeSDF < latticePoint) lastObj = vec4(cubeSDF, cubeCol);
 
-    return vec4(latticePoint, latticeCol);
-}
-
-vec4 getNextStep2(vec3 p, float uTime) {
-  if(length(p) > 35.) return vec4(0., vec3(0.));
-
-  vec3 id;
-  id.x = round(p.x);
-  p.x = mod(p.x, 2.) - 1.;
-  id.z = round(p.z/0.25 - 2.*0.25);
-  p.z = mod(p.z, 0.25) - 0.125;
-
-  float latticePoint; vec3 latticeCol;
-  latticePoint = sdSphere(p, 0.07);
-  latticeCol = vec3(8., .8 + .09*sin(uTime), 0.);
-
-  if (abs(id.x) > 7.) {
-    return vec4(0., vec3(0.));
-  }
-
-  return vec4(latticePoint, latticeCol);
-
-
+    return lastObj;
 }
 
 
@@ -354,7 +351,7 @@ void main() {
     vec3 textureCol = getTexture(textureUv, texture1);
 
     //origin and direction
-    vec3 ro = vec3(0., 0., -5.);
+    vec3 ro = vec3(0., 0., -7.);
     vec3 rd = normalize(vec3(uv, 1));
 
     //lookback camera
@@ -368,31 +365,12 @@ void main() {
         vec3 p = ro + rd*t;
 
         vec3 p1 = p;
-        float k = .5 + .4*sin(uTime/2.7);
-        p1.xy *= rot2D(p1.z*k + uTime);
-        // p1.y += .3*sin(p1.z);
+        p1.z += uTime/3.;
+        p1.y += 0.2*sin(p1.z + uTime);
         vec4 d1 = getNextStep(p1, uTime, 0.);
 
-        vec3 p2 = p;
-        p2.yz *= rot2D(PI/2.);
-        p2.yz *= rot2D(uTime/3.);
-        p2.xy *= rot2D(uTime/2.);
-        p2.y += .4*sin(p2.z + uTime*2.);
-        vec4 d2 = getNextStep(p2, uTime, 1.);
 
-        vec3 p3 = p;
-        p3.xy *= rot2D(-p.z*.3* + p.x*2.*sin(uTime));
-        p3.y -= 2.7;
-        p3.x -= 2.7;
-        p3.xz *= rot2D(PI/2.);
-        p3.yz *= rot2D(-PI/6.);
-        // p3.y -= 0.003*p3.z*p3.z;
-        p3.xy *= rot2D(uTime/2.);
-        vec4 d3 = getNextStep2(p3, uTime);
-
-        lastObj = d3;
-        if (d3.x < d1.x) lastObj = d3; else lastObj = d1;
-        if (lastObj.x > d2.x) lastObj = d2;
+        lastObj = d1;
 
         t += lastObj.x;
 
