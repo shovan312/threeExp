@@ -50,8 +50,8 @@ i:lights[1], k:lights[0], j:lights[3], l:lights[2]
 let controls = new CameraControls(orbitControls, camera);
 ///////////////////////////////
 sceneBasicObjects.forEach(object => scene.add(object))
-scene.background = cubeTexture;
-// scene.background = new THREE.Color(0x212121);
+// scene.background = cubeTexture;
+scene.background = new THREE.Color(0x212121);
 ///////////////////////////////
 
 let monoRes = 200
@@ -61,6 +61,9 @@ let monoMat = new THREE.ShaderMaterial({
     vertexShader: vertexShader,
     fragmentShader: fragmentShader
 });
+let monoMatTexture = new THREE.MeshPhongMaterial({
+    map: codeText
+})
 monoMat.uniforms.uTime = {value: 0}
 monoMat.uniforms.uMouse = {value: new THREE.Vector2(1/2,1/2)}
 monoMat.uniforms.texture1 = {value: codeText}
@@ -82,7 +85,6 @@ function animate() {
     lightControls.updateLights(keysPressed, time)
 
     monoMat.uniforms.uTime.value = time;
-//     console.log(monoMat.uniforms.uMouse.x)
     camera.updateProjectionMatrix()
     stats.update()
     renderer.render(scene, camera)

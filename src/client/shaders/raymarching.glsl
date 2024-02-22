@@ -260,21 +260,40 @@ vec4 opElongate( in vec3 p, in vec3 h )
 
 ///////////////////////////////
 
-vec3 getTexture(vec2 vUv, sampler2D texture1) {
-    vec3 textureCol = texture2D(texture1, vUv).xyz;
-    bool isRed = false;
-    for(float i=0.; i<.02; i+=0.01) {
-        vec2 tempUv = vUv + vec2(0., i);
-        vec3 tempCol = texture2D(texture1, tempUv).xyz;
-        if (tempCol.x > .4) {
-            isRed = true;
-        }
-    }
+float getGrayScale(vec3 color) {
+  return 0.299*color.x + 0.587*color.y + 0.114*color.z;
+}
 
-    if (isRed ) {
-        textureCol = vec3(0.,0.,0.);
-    }
-    return textureCol;
+float getBayerValue(vec3 col, ivec2 pos, float uTime) {
+  mat4 bayerMat = 1./16.*mat4(
+      0., 8., 2., 10.,
+      12., 4., 14., 6.,
+      3., 11., 1., 9.,
+      15., 7., 13., 5.
+    );
+
+  pos.x = int(mod(float(pos.x), 4.));
+  pos.y = int(mod(float(pos.y), 4.));
+
+  float threshold = bayerMat[pos.x][pos.y];
+  if (col.x < threshold) {
+    return 0.;
+  }
+  return 1.;
+}
+
+vec3 getTexture(vec2 vUv, sampler2D texture1, float uTime) {
+    //returns int vector representing w and h
+    ivec2 textureSize2d = textureSize(texture1, 0);
+
+    vec3 textureCol = texture2D(texture1, vUv).xyz;
+    textureCol = vec3(getGrayScale(textureCol));
+
+    ivec2 posInd;
+    posInd.x = int(floor(vUv.x*float(textureSize2d.x)));
+    posInd.y = int(floor(vUv.y*float(textureSize2d.y)));
+
+    return vec3(getBayerValue(textureCol, posInd, uTime));
 }
 
 void mouseControls(inout vec3 ro, inout vec3 rd, float uTime) {
@@ -298,57 +317,18 @@ void makeColor(inout vec3 color, vec4 lastObj, float distTravelled, float normIt
     // if (color.x > .99 ) {color = vec3(.4);}
 }
 
-vec4 getNextStep(vec3 p, float uTime, float sceneId) {
-    if (length(p) > 35.) {
-      return vec4(0., vec3(0.));
-    }
-
-    vec3 id;
-    id.x = round(p.x );
-    p.x = mod(p.x, 2.) - 1.;
-
-    float theta = PI - atan(p.y, -p.x);
-    float n = min(1. +  uTime/1., 17.);
-    // float n = 7.;
-    theta /= 2.*PI;
-    theta *= n;
-    theta = fract(theta);
-    theta *= 2.*PI/n;
-    p.xy = length(p.xy) * vec2(cos(theta),  sin(theta));
-
-    vec3 cubeP = p;
-    // cubeP.y -= .5/n;
-    cubeP.x -= .5;
-    cubeP.xy *= rot2D(PI/2. - uTime);
-    float cubeSDF = sdTorus(cubeP, vec2(1., 0.1));
-    // float cubeSDF = sdVerticalCapsule(cubeP, 1., 0.06);
-    vec3 cubeCol = vec3(0.0, 0.0, .0);
-
-
-    id.z = round(p.z/0.25 - 2.*0.25);
-    p.z = mod(p.z, 0.25) - 0.125;
-
-    float latticePoint; vec3 latticeCol;
-    vec3 p1 = p;
-    p1.x -= 1.5*cos(PI/n);
-    p1.y -= 1.5*sin(PI/n);
-    latticePoint = sdBox(p1, vec3(.05));
-    // latticePoint = sdSphere(p1, .2);
-    float zColChange =  10.*(1. + sin(uTime));
-    latticeCol = vec3(0., .7 - zColChange/10., 1. - zColChange/5.);
-
-    vec4 lastObj = vec4(latticePoint, latticeCol);
-    if (cubeSDF < latticePoint) lastObj = vec4(cubeSDF, cubeCol);
-
-    return lastObj;
+vec4 getNextStep(vec3 p, float uTime) {
+    p.xy = mod(p.xy, .5) - 0.25;
+   float sphere = sdSphere(p, .2);
+   return vec4(sphere, vec3(.5, 0., 0.));
 }
 
 
 void main() {
     vec2 uv = (vUv - .5)*2.;
 
-    vec2 textureUv = vUv*.5;
-    vec3 textureCol = getTexture(textureUv, texture1);
+    vec2 textureUv = vUv;
+    vec3 textureCol = getTexture(textureUv, texture1, uTime);
 
     //origin and direction
     vec3 ro = vec3(0., 0., -7.);
@@ -365,10 +345,9 @@ void main() {
         vec3 p = ro + rd*t;
 
         vec3 p1 = p;
-        p1.z += uTime/3.;
-        p1.y += 0.2*sin(p1.z + uTime);
-        vec4 d1 = getNextStep(p1, uTime, 0.);
-
+        // p1.z += uTime/3.;
+        // p1.y += 0.2*sin(p1.z + uTime);
+        vec4 d1 = getNextStep(p1, uTime);
 
         lastObj = d1;
 
@@ -380,6 +359,6 @@ void main() {
 
 
 	  makeColor(color, lastObj, t, float(i)/float(steps));
-	  gl_FragColor = vec4(color, 1);
+	  gl_FragColor = vec4(textureCol, 1);
 }
 `;

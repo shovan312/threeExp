@@ -75,7 +75,7 @@ function getLights():Array<THREE.Light>{
 
     const pointLights:Array<THREE.Light> = []
     for(let i=0; i<1;i++) {
-        const pointLight = new THREE.SpotLight(0xffffff, 1000, 0, Math.PI/4, 0.5);
+        const pointLight = new THREE.SpotLight(0xffffff, 100, 0, Math.PI/4, 0.5);
         pointLight.position.z = 10;
         pointLight.position.y = 0;
         pointLight.castShadow = true
@@ -144,7 +144,7 @@ export function loadTextures() {
     let nrmlText0 = textureLoader.load('./Water_1_M_Normal.jpg');
     let nrmlText1 = textureLoader.load('./Water_2_M_Normal.jpg');
     let rainbowText = textureLoader.load('./rainbow.jpg')
-    let codeText = textureLoader.load('./codeScreenshot1.jpeg')
+    let codeText = textureLoader.load('./cat2.jpg')
 
     let cubeTexture = new THREE.CubeTextureLoader().load([
         'paperSquare.png',
