@@ -28,7 +28,7 @@ import fragmentShader from './shaders/raymarching.glsl'
 let sceneBasicObjects:THREE.Object3D[] = []
 ////////////////////////
 let flowText:Texture,nrmlText0:Texture,nrmlText1:Texture,rainbowText:Texture,cubeTexture:Texture,codeText:Texture;
-[flowText, nrmlText0, nrmlText1, rainbowText, cubeTexture, codeText] = loadTextures()
+[flowText, nrmlText0, nrmlText1, rainbowText, cubeTexture, codeText] = await loadTextures()
 /////////////////////////
 let gridHelper:GridHelper,
 axesHelper:AxesHelper,

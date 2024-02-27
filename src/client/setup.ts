@@ -1,6 +1,7 @@
 import Stats from "three/examples/jsm/libs/stats.module";
 import {GUI} from "dat.gui";
 import * as THREE from "three";
+import {Texture} from "three";
 import {OBJLoader} from "three/examples/jsm/loaders/OBJLoader";
 import {OrthographicCamera} from "three";
 import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
@@ -17,6 +18,7 @@ export const
     camera = getCamera("pers"),
     orbitControls = new OrbitControls(camera, renderer.domElement),
     textureLoader = new THREE.TextureLoader(),
+    imageLoader = new THREE.ImageLoader(),
     lights = getLights()
 
 function getCamera(type:string): THREE.PerspectiveCamera | THREE.OrthographicCamera{
@@ -139,12 +141,23 @@ export function makeHelperObjects():[THREE.GridHelper, THREE.AxesHelper, THREE.A
     return [gridHelper, axesHelper, axes];
 }
 
-export function loadTextures() {
+export async function loadTextures() {
     let flowText = textureLoader.load('./Water_1_M_Flow.jpg');
     let nrmlText0 = textureLoader.load('./Water_1_M_Normal.jpg');
     let nrmlText1 = textureLoader.load('./Water_2_M_Normal.jpg');
     let rainbowText = textureLoader.load('./rainbow.jpg')
-    let codeText = textureLoader.load('./cat2.jpg')
+    let codeText:Texture = textureLoader.load('./cat2.jpg')
+//     codeText = textureLoader.load('./gray.png')
+    await new Promise(f => setTimeout(f, 100));
+    const canvas:HTMLCanvasElement = document.createElement( 'canvas' );
+    canvas.width = codeText.image.width;
+    canvas.height = codeText.image.height;
+
+    const context:CanvasRenderingContext2D = canvas.getContext( '2d' )!;
+    context.drawImage( codeText.image, 0, 0 );
+
+    const data = context.getImageData( 0, 0, canvas.width, canvas.height );
+    console.log( data );
 
     let cubeTexture = new THREE.CubeTextureLoader().load([
         'paperSquare.png',

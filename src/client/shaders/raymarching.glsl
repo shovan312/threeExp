@@ -43,6 +43,10 @@ bool isPrime(int number) {
     }
     return true;
 }
+
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
 //3d Primitive//
 ///////////////////////////////
 
@@ -70,6 +74,20 @@ float sdBoxFrame( vec3 p, vec3 b, float e )
 float sdCylinder( vec3 p, vec3 c )
 {
   return length(p.xz-c.xy)-c.z;
+}
+
+float sdOctahedron( vec3 p, float s )
+{
+  p = abs(p);
+  float m = p.x+p.y+p.z-s;
+  vec3 q;
+       if( 3.0*p.x < m ) q = p.xyz;
+  else if( 3.0*p.y < m ) q = p.yzx;
+  else if( 3.0*p.z < m ) q = p.zxy;
+  else return m*0.57735027;
+    
+  float k = clamp(0.5*(q.z-q.y+s),0.0,s); 
+  return length(vec3(q.x,q.y-s+k,q.z-k)); 
 }
 
 float udTriangle( vec3 p, vec3 a, vec3 b, vec3 c )
@@ -265,6 +283,7 @@ float getGrayScale(vec3 color) {
 }
 
 float getBayerValue(vec3 col, ivec2 pos, float uTime) {
+  // if (col.x < max(0.1, 1. - uTime/10.)) return col.x;
   mat4 bayerMat = 1./16.*mat4(
       0., 8., 2., 10.,
       12., 4., 14., 6.,
@@ -272,8 +291,8 @@ float getBayerValue(vec3 col, ivec2 pos, float uTime) {
       15., 7., 13., 5.
     );
 
-  pos.x = int(mod(float(pos.x), 4.));
-  pos.y = int(mod(float(pos.y), 4.));
+  pos.x %= 4;
+  pos.y %= 4;
 
   float threshold = bayerMat[pos.x][pos.y];
   if (col.x < threshold) {
@@ -284,16 +303,19 @@ float getBayerValue(vec3 col, ivec2 pos, float uTime) {
 
 vec3 getTexture(vec2 vUv, sampler2D texture1, float uTime) {
     //returns int vector representing w and h
+    vUv = floor(vUv*800.)/800.;
+
     ivec2 textureSize2d = textureSize(texture1, 0);
-
-    vec3 textureCol = texture2D(texture1, vUv).xyz;
-    textureCol = vec3(getGrayScale(textureCol));
-
     ivec2 posInd;
     posInd.x = int(floor(vUv.x*float(textureSize2d.x)));
     posInd.y = int(floor(vUv.y*float(textureSize2d.y)));
 
-    return vec3(getBayerValue(textureCol, posInd, uTime));
+    vec3 textureCol = texture2D(texture1, vUv).xyz;
+    textureCol = vec3(getGrayScale(textureCol));
+    textureCol = vec3(getBayerValue(textureCol, posInd, uTime));
+    
+
+    return textureCol;
 }
 
 void mouseControls(inout vec3 ro, inout vec3 rd, float uTime) {
@@ -317,10 +339,31 @@ void makeColor(inout vec3 color, vec4 lastObj, float distTravelled, float normIt
     // if (color.x > .99 ) {color = vec3(.4);}
 }
 
-vec4 getNextStep(vec3 p, float uTime) {
-    p.xy = mod(p.xy, .5) - 0.25;
-   float sphere = sdSphere(p, .2);
-   return vec4(sphere, vec3(.5, 0., 0.));
+vec4 getNextStep(vec3 p, float uTime, sampler2D texture1) {
+    float density = .25;
+    float num = 80.;
+    vec2 id = floor(p.xy/density);
+    if (abs(id.x) > num || abs(id.y) > num) return vec4(0., vec3(0.));
+    id += num;
+    id /= 2.*num;
+    vec3 textureCol = texture2D(texture1, id).xyz;
+
+
+    ivec2 textureSize2d = textureSize(texture1, 0);
+    ivec2 posInd;
+    posInd.x = int(floor(id.x*float(textureSize2d.x)));
+    posInd.y = int(floor(id.y*float(textureSize2d.y)));
+    textureCol = vec3(getGrayScale(textureCol));
+    textureCol = vec3(getBayerValue(textureCol, posInd, uTime));
+
+
+
+    p.xy = mod(p.xy, density) - density/2.;
+   // float sphere = sdSphere(p, density/2. - density/10.);
+   float sphere = sdBox(p, vec3(density/2. - density/10.)/2.);
+   // float sphere = sdOctahedron(p, density/2. - density/10.);
+   // return vec4(sphere, vec3(id.x, id.y, 0.));
+   return vec4(sphere, textureCol);
 }
 
 
@@ -331,7 +374,7 @@ void main() {
     vec3 textureCol = getTexture(textureUv, texture1, uTime);
 
     //origin and direction
-    vec3 ro = vec3(0., 0., -7.);
+    vec3 ro = vec3(0., 0., -15.);
     vec3 rd = normalize(vec3(uv, 1));
 
     //lookback camera
@@ -347,7 +390,7 @@ void main() {
         vec3 p1 = p;
         // p1.z += uTime/3.;
         // p1.y += 0.2*sin(p1.z + uTime);
-        vec4 d1 = getNextStep(p1, uTime);
+        vec4 d1 = getNextStep(p1, uTime, texture1);
 
         lastObj = d1;
 
@@ -359,6 +402,6 @@ void main() {
 
 
 	  makeColor(color, lastObj, t, float(i)/float(steps));
-	  gl_FragColor = vec4(textureCol, 1);
+	  gl_FragColor = vec4(mix(color, textureCol, 0.), 1);
 }
 `;
