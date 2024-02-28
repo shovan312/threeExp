@@ -104,6 +104,7 @@ renderer.setClearColor(0x000000);
 document.body.appendChild(renderer.domElement)
 
 stats.showPanel(2)
+stats.showPanel(1)
 document.body.appendChild(stats.dom)
 
 window.addEventListener('resize', onWindowResize, false)
@@ -147,17 +148,10 @@ export async function loadTextures() {
     let nrmlText1 = textureLoader.load('./Water_2_M_Normal.jpg');
     let rainbowText = textureLoader.load('./rainbow.jpg')
     let codeText:Texture = textureLoader.load('./cat2.jpg')
+
 //     codeText = textureLoader.load('./gray.png')
-    await new Promise(f => setTimeout(f, 100));
-    const canvas:HTMLCanvasElement = document.createElement( 'canvas' );
-    canvas.width = codeText.image.width;
-    canvas.height = codeText.image.height;
 
-    const context:CanvasRenderingContext2D = canvas.getContext( '2d' )!;
-    context.drawImage( codeText.image, 0, 0 );
 
-    const data = context.getImageData( 0, 0, canvas.width, canvas.height );
-    console.log( data );
 
     let cubeTexture = new THREE.CubeTextureLoader().load([
         'paperSquare.png',

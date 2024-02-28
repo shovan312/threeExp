@@ -52,39 +52,41 @@ let controls = new CameraControls(orbitControls, camera);
 sceneBasicObjects.forEach(object => scene.add(object))
 // scene.background = cubeTexture;
 scene.background = new THREE.Color(0x212121);
-///////////////////////////////
 
+///////////////////////////////
 let monoRes = 200
 let monoGeo = new THREE.PlaneGeometry(10, 10, monoRes-1, monoRes-1);
-let monoMat = new THREE.ShaderMaterial({
-    side: THREE.DoubleSide,
-    vertexShader: vertexShader,
-    fragmentShader: fragmentShader
-});
 let monoMatTexture = new THREE.MeshPhongMaterial({
-    map: codeText
+//     map: codeText
 })
-monoMat.uniforms.uTime = {value: 0}
-monoMat.uniforms.uMouse = {value: new THREE.Vector2(1/2,1/2)}
-monoMat.uniforms.texture1 = {value: codeText}
 
-let monoMesh = new THREE.Mesh(monoGeo, monoMat);
+let monoMesh = new THREE.Mesh(monoGeo, monoMatTexture);
 scene.add(monoMesh)
 monoMesh.position.z = 0.02
 
-document.onmousemove = function (e) {
-    monoMat.uniforms.uMouse = {value: new THREE.Vector2(e.pageX/window.innerWidth, e.pageY/window.innerHeight)}
-//     console.log(monoMat.uniforms.uMouse.value.x, monoMat.uniforms.uMouse.value.y)
-}
+/////////////////////////////
 
+//random sleep to let texture load
+await new Promise(f => setTimeout(f, 100));
+
+let newData:Uint8Array = getTextureData(codeText);
+let dataTexture = new THREE.DataTexture(newData, codeText.image.width, codeText.image.height);
+monoMatTexture.map = dataTexture;
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
+    if (time % 5 < 0.1)
+    {
+        newData.set(updatePixelData(newData, time, new THREE.Vector2(codeText.image.width, codeText.image.height)));
+    }
+    dataTexture.needsUpdate = true;
+
+
 //     controls.updateCamera(camera, orbitControls, keysPressed, clock.getDelta())
     lightControls.updateLights(keysPressed, time)
 
-    monoMat.uniforms.uTime.value = time;
+
     camera.updateProjectionMatrix()
     stats.update()
     renderer.render(scene, camera)
@@ -93,37 +95,82 @@ function animate() {
 animate()
 // renderer.setAnimationLoop(animate);
 
-function map(p:THREE.Vector3, time:number):number {
-    return p.length() - 1 + Math.sin(time)/2
-}
+function updatePixelData(array:Uint8Array, time:number, dimensions:THREE.Vector2):Uint8Array {
+    let returnArray:Uint8Array = new Uint8Array(dimensions.x*dimensions.y*4);
+    let pixelMatrix = []
 
-function getColor(uv:THREE.Vector2, time:number):THREE.Color{
-    let ro = new THREE.Vector3(0,0,-3)
-    let rd = new THREE.Vector3(uv.x,uv.y,1)
-    rd.normalize()
-//     if (time > 0.3 && time < 0.4 && uv.x < -0.97 && uv.y < -0.97) console.log(rd)
-
-    let col = new THREE.Vector3(0,0,0)
-
-    let t=0;
-
-    //RayMarching
-    for(let i=0; i<40; i++) {
-        let p = ro.clone().add(rd.clone().multiplyScalar(t))
-
-        let d = map(p, time)
-//         if (time > 0.3 && time < 0.4 &&
-//             Math.abs(uv.x) < 0.01 && Math.abs(uv.y) < 0.01 &&
-// //             uv.x < -0.97 && uv.y < -0.97 &&
-//             i < 9
-//             ) {console.log(i, ro)}
-        t += d;
-        if (t > 20) break;
-        if (d < 0.001) break;
+    for(let i=0; i<dimensions.x; i++) {
+        let pixelMatrixRow = []
+        for(let j=0; j<dimensions.y; j++) {
+            let index = 4*(i*dimensions.x + j);
+``
+            pixelMatrixRow.push(new THREE.Vector3(
+                newData[index],
+                newData[index+1],
+                newData[index+2],
+            ))
+//             let grayScale = 0.299*newData[index] + 0.587*newData[index+1] + 0.114*newData[index+2]
+//             pixelMatrixRow.push(new THREE.Vector3(
+//                 grayScale, grayScale, grayScale
+//             ))
+        }
+        pixelMatrix.push(pixelMatrixRow);
     }
 
-    col = new THREE.Vector3(t*0.2,t*0.2,t*0.2)
+    for(let i=0; i<pixelMatrix.length; i++) {
+        for(let j=0; j<pixelMatrix[0].length; j++) {
+            let currColor = pixelMatrix[i][j];
+            let colorError = new THREE.Vector3();
+            let newColor = new THREE.Vector3(
+                currColor.x > 255/2 ? 255 : 0,
+                currColor.y > 255/2 ? 255 : 0,
+                currColor.z > 255/2 ? 255 : 0,
+            );
+            pixelMatrix[i][j] = newColor;
+            colorError = currColor.clone().sub(newColor);
 
-    let ret = new THREE.Color(col.x, col.y, col.z)
-    return ret.convertSRGBToLinear();
+            if (j<pixelMatrix[0].length-1) {
+                pixelMatrix[i][j+1].add(colorError.clone().multiplyScalar(7/16));
+            }
+
+            if (i<pixelMatrix.length-1) {
+                pixelMatrix[i+1][j].add(colorError.clone().multiplyScalar(5/16));
+                if (j<pixelMatrix[0].length-1) {
+                    pixelMatrix[i+1][j+1].add(colorError.clone().multiplyScalar(1/16));
+                }
+                if (j > 0) {
+                    pixelMatrix[i+1][j-1].add(colorError.clone().multiplyScalar(3/16));
+                }
+            }
+
+        }
+    }
+
+    for(let i=0; i<pixelMatrix.length; i++) {
+        for(let j=0; j<pixelMatrix[0].length; j++) {
+            let color = pixelMatrix[i][j];
+
+            returnArray[4*(i*pixelMatrix.length + j) + 0] = color.x;
+            returnArray[4*(i*pixelMatrix.length + j) + 1] = color.y;
+            returnArray[4*(i*pixelMatrix.length + j) + 2] = color.z;
+            returnArray[4*(i*pixelMatrix.length + j) + 3] = 255;
+
+        }
+    }
+    return returnArray;
+}
+
+function getTextureData(texture:Texture):Uint8Array {
+    const canvas:HTMLCanvasElement = document.createElement( 'canvas' );
+    canvas.width = codeText.image.width;
+    canvas.height = codeText.image.height;
+
+    const context:CanvasRenderingContext2D = canvas.getContext( '2d' )!;
+    context.drawImage( codeText.image, 0, 0 );
+    const data = context.getImageData( 0, 0, canvas.width, canvas.height );
+    let newData:Uint8Array = new Uint8Array(data.data.length);
+    for(let i=0; i<data.data.length; i++) {
+        newData[i] = data.data[i];
+    }
+    return newData;
 }

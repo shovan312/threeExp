@@ -356,8 +356,6 @@ vec4 getNextStep(vec3 p, float uTime, sampler2D texture1) {
     textureCol = vec3(getGrayScale(textureCol));
     textureCol = vec3(getBayerValue(textureCol, posInd, uTime));
 
-
-
     p.xy = mod(p.xy, density) - density/2.;
    // float sphere = sdSphere(p, density/2. - density/10.);
    float sphere = sdBox(p, vec3(density/2. - density/10.)/2.);
@@ -402,6 +400,6 @@ void main() {
 
 
 	  makeColor(color, lastObj, t, float(i)/float(steps));
-	  gl_FragColor = vec4(mix(color, textureCol, 0.), 1);
+	  gl_FragColor = vec4(textureCol, 1);
 }
 `;
