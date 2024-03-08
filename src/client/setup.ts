@@ -103,8 +103,7 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.setClearColor(0x000000);
 document.body.appendChild(renderer.domElement)
 
-stats.showPanel(2)
-stats.showPanel(1)
+stats.showPanel(0)
 document.body.appendChild(stats.dom)
 
 window.addEventListener('resize', onWindowResize, false)

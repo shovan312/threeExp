@@ -61,8 +61,9 @@ let monoMatTexture = new THREE.MeshPhongMaterial({
 })
 
 let monoMesh = new THREE.Mesh(monoGeo, monoMatTexture);
-scene.add(monoMesh)
+// scene.add(monoMesh)
 monoMesh.position.z = 0.02
+monoMesh.position.z = -20
 
 /////////////////////////////
 
@@ -73,6 +74,22 @@ let newData:Uint8Array = getTextureData(codeText);
 let dataTexture = new THREE.DataTexture(newData, codeText.image.width, codeText.image.height);
 monoMatTexture.map = dataTexture;
 
+///////////
+let scale = 1/100
+let pixelSize = scale
+let downSample = 10;
+let pixelArray:Float32Array=new Float32Array(codeText.image.width*codeText.image.height*3);
+for(let i=0; i<codeText.image.height; i++) {
+    for(let j=0; j<codeText.image.width; j++) {
+        const index = codeText.image.width*i + j
+        pixelArray[3*index + 0] = j*scale - codeText.image.width*scale/2
+        pixelArray[3*index + 1] = i*scale - codeText.image.height*scale/2
+        pixelArray[3*index + 2] = 0
+    }
+}
+let pointsMesh = getPointMesh(pixelArray, pixelSize)
+scene.add(pointsMesh)
+
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
@@ -81,6 +98,37 @@ function animate() {
         newData.set(updatePixelData(newData, time, new THREE.Vector2(codeText.image.width, codeText.image.height)));
     }
     dataTexture.needsUpdate = true;
+
+
+    let colorsArray = Float32Array.from(newData);
+    pointsMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(Float32Array.from(newData), 4))
+
+    const pointsPos = pointsMesh.geometry.getAttribute('position').array
+    let newPosArray = new Float32Array(pointsPos.length)
+    for(let i=0; i<pointsPos.length; i+=3) {
+        let x = pointsPos[i + 0]
+        let y = pointsPos[i + 1]
+        let z = pointsPos[i + 2]
+
+        newPosArray[i + 0] = pointsPos[i + 0]
+        newPosArray[i + 1] = pointsPos[i + 1]
+        newPosArray[i + 2] = 2*Math.sin(time)
+    }
+    pointsMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(newPosArray, 3))
+
+    const pointsCol = pointsMesh.geometry.getAttribute('color').array
+    let newColArray = new Float32Array(pointsCol.length)
+    for(let i=0; i<pointsCol.length; i+=4) {
+        let r = pointsCol[i + 0]
+        let g = pointsCol[i + 1]
+        let b = pointsCol[i + 2]
+
+        newColArray[i + 0] = pointsCol[i + 0]
+        newColArray[i + 1] = pointsCol[i + 1]
+        newColArray[i + 2] = pointsCol[i + 2]
+        newColArray[i + 3] = pointsCol[i + 3]
+    }
+    pointsMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(newColArray, 4))
 
 
 //     controls.updateCamera(camera, orbitControls, keysPressed, clock.getDelta())
@@ -94,7 +142,6 @@ function animate() {
 }
 animate()
 // renderer.setAnimationLoop(animate);
-
 function updatePixelData(array:Uint8Array, time:number, dimensions:THREE.Vector2):Uint8Array {
     let returnArray:Uint8Array = new Uint8Array(dimensions.x*dimensions.y*4);
     let pixelMatrix = []
@@ -120,6 +167,8 @@ function updatePixelData(array:Uint8Array, time:number, dimensions:THREE.Vector2
     for(let i=0; i<pixelMatrix.length; i++) {
         for(let j=0; j<pixelMatrix[0].length; j++) {
             let currColor = pixelMatrix[i][j];
+            let grayFloat = 0.299*currColor.x + 0.587*currColor.y + 0.114*currColor.z;
+            currColor = new THREE.Vector3(grayFloat, grayFloat, grayFloat)
             let colorError = new THREE.Vector3();
             let newColor = new THREE.Vector3(
                 currColor.x > 255/2 ? 255 : 0,
