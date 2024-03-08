@@ -44,7 +44,7 @@ export class CameraControls {
         this.walkDirection.applyAxisAngle(this.rotateAngle, directionOffset)
         // console.log(directionOffset)
 
-        const velocity = 100
+        const velocity = 10
 
         // move model & camera
         const moveX = this.walkDirection.x * velocity * delta
@@ -62,10 +62,10 @@ export class CameraControls {
 
         // update camera target
         this.cameraTarget.x = 0
-        this.cameraTarget.y = 2
+        this.cameraTarget.y = 0
         this.cameraTarget.z = 0
         this.orbitControl.target = this.cameraTarget
-        this.camera.lookAt(0,2,0)
+        this.camera.lookAt(0,0,0)
     }
 
     private updateCameraRotation(rotationOffset:THREE.Vector3) {

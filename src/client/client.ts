@@ -35,7 +35,7 @@ axesHelper:AxesHelper,
 axes:Array<AxesHelper>;
 [gridHelper, axesHelper, axes] = makeHelperObjects();
 
-sceneBasicObjects.push(gridHelper)
+// sceneBasicObjects.push(gridHelper)
 ///////////////////////////////
 let water:THREE.Object3D, water2:THREE.Object3D;
 [water, water2] = makeWater(flowText, nrmlText0, nrmlText1)
@@ -76,7 +76,7 @@ monoMatTexture.map = dataTexture;
 
 ///////////
 let scale = 1/100
-let pixelSize = scale
+let pixelSize = scale*7
 let downSample = 10;
 let pixelArray:Float32Array=new Float32Array(codeText.image.width*codeText.image.height*3);
 for(let i=0; i<codeText.image.height; i++) {
@@ -93,15 +93,16 @@ scene.add(pointsMesh)
 let originalPosArray:Float32Array = pixelArray
 let finalPosArray = new Float32Array(codeText.image.width*codeText.image.height*3)
 for(let i=0; i<80; i++) {
-    for(let j=0; j<10; j++) {
-        for(let k=0; k<800; k++) {
-            const index = i*800*10 + j*800 + k
+    for(let j=0; j<100; j++) {
+        for(let k=0; k<80; k++) {
+            const index = i*80*100 + j*80 + k
             finalPosArray[3*index + 0] = i - 40
-            finalPosArray[3*index + 1] = j - 5
-            finalPosArray[3*index + 2] = k - 400
+            finalPosArray[3*index + 1] = j - 50
+            finalPosArray[3*index + 2] = k - 40
         }
     }
 }
+finalPosArray.sort(() => Math.random() - 0.5)
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
@@ -118,7 +119,8 @@ function animate() {
 
     const pointsPos = pointsMesh.geometry.getAttribute('position').array
     let newPosArray = new Float32Array(pointsPos.length)
-    let t = Math.sin(time)/2 + 1/2
+    let t = THREE.MathUtils.clamp(1.2*Math.sin(time/10), 0, 1)
+//     t=1
     for(let i=0; i<pointsPos.length; i+=3) {
         let x = pointsPos[i + 0]
         let y = pointsPos[i + 1]
@@ -145,7 +147,7 @@ function animate() {
     pointsMesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(newColArray, 4))
 
 
-//     controls.updateCamera(camera, orbitControls, keysPressed, clock.getDelta())
+    controls.updateCamera(camera, orbitControls, keysPressed, clock.getDelta())
     lightControls.updateLights(keysPressed, time)
 
 
