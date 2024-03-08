@@ -103,6 +103,21 @@ for(let i=0; i<80; i++) {
     }
 }
 finalPosArray.sort(() => Math.random() - 0.5)
+//
+// let pathVector:any[] = []
+// for(let i=0; i<codeText.image.height; i++) {
+//     let pathVectorRow = []
+//     for(let j=0; j<codeText.image.width; j++) {
+//         pathVectorRow.push(new THREE.CatmullRomCurve3([
+//             new THREE.Vector3( 0, 0, 0 ),
+//             new THREE.Vector3( 1, 1, 0 ),
+//             new THREE.Vector3( 2, 0, 0 ),
+//             new THREE.Vector3( 1, -1, 0 )
+//         ]).getPoints(10))
+//     }
+//     pathVector.push(pathVectorRow)
+// }
+// console.log(pathVector[0][0][0])
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
@@ -126,10 +141,33 @@ function animate() {
         let y = pointsPos[i + 1]
         let z = pointsPos[i + 2]
 
-        newPosArray[i + 0] = originalPosArray[i + 0]*t + finalPosArray[i + 0]*(1-t)
-        newPosArray[i + 1] = originalPosArray[i + 1]*t + finalPosArray[i + 1]*(1-t)
-        newPosArray[i + 2] = originalPosArray[i + 2]*t + finalPosArray[i + 2]*(1-t)
+//         newPosArray[i + 0] = originalPosArray[i + 0]*t + finalPosArray[i + 0]*(1-t)
+//         newPosArray[i + 1] = originalPosArray[i + 1]*t + finalPosArray[i + 1]*(1-t)
+//         newPosArray[i + 2] = originalPosArray[i + 2]*t + finalPosArray[i + 2]*(1-t)
+
+
+        let uvY = (Math.floor(Math.floor(i/3)/codeText.image.width) - codeText.image.width/2)/100
+        let uvX = (Math.floor(Math.floor(i/3)%codeText.image.width) - codeText.image.width/2)/100
+        newPosArray[i + 0] = originalPosArray[i + 0]*t + Math.sqrt(uvX*uvX + uvY*uvY)*Math.sin(time + uvY*3)*(1-t);
+        newPosArray[i + 1] = originalPosArray[i + 1];
+        newPosArray[i + 2] = originalPosArray[i + 2]*t + Math.sqrt(uvX*uvX + uvY*uvY)*Math.cos(time + uvY)*(1-t);
     }
+//     for(let i=0; i<pointsPos.length; i+=3) {
+//             let uvY = Math.floor(Math.floor(i/3)/codeText.image.width)
+//             let uvX = Math.floor(Math.floor(i/3)%codeText.image.width)
+//
+//             let x = pointsPos[i + 0]
+//             let y = pointsPos[i + 1]
+//             let z = pointsPos[i + 2]
+//
+//             let timeFrac = (time%10) - Math.floor(time%10)
+//             let curvePos = pathVector[uvX][uvY][Math.floor(time%10)].clone().multiplyScalar(timeFrac).clone().add(
+//                 pathVector[uvX][uvY][Math.floor((time+1)%10)].clone().multiplyScalar(1-timeFrac))
+//
+//             newPosArray[i + 0] = originalPosArray[i + 0] + curvePos.x
+//             newPosArray[i + 1] = originalPosArray[i + 1] + curvePos.y
+//             newPosArray[i + 2] = originalPosArray[i + 2] + curvePos.z
+//         }
     pointsMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(newPosArray, 3))
 
     const pointsCol = pointsMesh.geometry.getAttribute('color').array
