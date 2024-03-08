@@ -90,6 +90,19 @@ for(let i=0; i<codeText.image.height; i++) {
 let pointsMesh = getPointMesh(pixelArray, pixelSize)
 scene.add(pointsMesh)
 
+let originalPosArray:Float32Array = pixelArray
+let finalPosArray = new Float32Array(codeText.image.width*codeText.image.height*3)
+for(let i=0; i<80; i++) {
+    for(let j=0; j<10; j++) {
+        for(let k=0; k<800; k++) {
+            const index = i*800*10 + j*800 + k
+            finalPosArray[3*index + 0] = i - 40
+            finalPosArray[3*index + 1] = j - 5
+            finalPosArray[3*index + 2] = k - 400
+        }
+    }
+}
+
 function animate() {
     let time:number = clock.getElapsedTime()*1;
 
@@ -105,14 +118,15 @@ function animate() {
 
     const pointsPos = pointsMesh.geometry.getAttribute('position').array
     let newPosArray = new Float32Array(pointsPos.length)
+    let t = Math.sin(time)/2 + 1/2
     for(let i=0; i<pointsPos.length; i+=3) {
         let x = pointsPos[i + 0]
         let y = pointsPos[i + 1]
         let z = pointsPos[i + 2]
 
-        newPosArray[i + 0] = pointsPos[i + 0]
-        newPosArray[i + 1] = pointsPos[i + 1]
-        newPosArray[i + 2] = 2*Math.sin(time)
+        newPosArray[i + 0] = originalPosArray[i + 0]*t + finalPosArray[i + 0]*(1-t)
+        newPosArray[i + 1] = originalPosArray[i + 1]*t + finalPosArray[i + 1]*(1-t)
+        newPosArray[i + 2] = originalPosArray[i + 2]*t + finalPosArray[i + 2]*(1-t)
     }
     pointsMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(newPosArray, 3))
 

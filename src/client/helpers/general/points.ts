@@ -86,11 +86,11 @@ export function getRingPoints(n:number, radius:number) {
 
 export function getPointMesh(posArray:Float32Array, pixelSize:number=0.7) {
     const latticeGeo = new THREE.BufferGeometry;
-//     posArray = rearrangeArr(posArray)
+    posArray = rearrangeArr(posArray)
     latticeGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3))
     const latticeMesh = new THREE.Points(latticeGeo, new THREE.PointsMaterial({
         size: pixelSize,
-//         color: 0xffffff,
+        color: 0xffffff,
         vertexColors: true
     }))
     return latticeMesh;
