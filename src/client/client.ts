@@ -76,7 +76,7 @@ monoMatTexture.map = dataTexture;
 
 ///////////
 let scale = 1/100
-let pixelSize = scale*7
+let pixelSize = scale*2
 let downSample = 10;
 let pixelArray:Float32Array=new Float32Array(codeText.image.width*codeText.image.height*3);
 for(let i=0; i<codeText.image.height; i++) {
@@ -134,13 +134,10 @@ function animate() {
 
     const pointsPos = pointsMesh.geometry.getAttribute('position').array
     let newPosArray = new Float32Array(pointsPos.length)
-    let t = THREE.MathUtils.clamp(1.2*Math.sin(time/10), 0, 1)
+    let t = THREE.MathUtils.clamp(1.2*Math.cos(time/10), 0, 1)
 //     t=1
     for(let i=0; i<pointsPos.length; i+=3) {
-        let x = pointsPos[i + 0]
-        let y = pointsPos[i + 1]
-        let z = pointsPos[i + 2]
-
+        let currPositionAbsolute = new THREE.Vector3(originalPosArray[i],originalPosArray[i+1],originalPosArray[i+2])
 //         newPosArray[i + 0] = originalPosArray[i + 0]*t + finalPosArray[i + 0]*(1-t)
 //         newPosArray[i + 1] = originalPosArray[i + 1]*t + finalPosArray[i + 1]*(1-t)
 //         newPosArray[i + 2] = originalPosArray[i + 2]*t + finalPosArray[i + 2]*(1-t)
@@ -148,9 +145,15 @@ function animate() {
 
         let uvY = (Math.floor(Math.floor(i/3)/codeText.image.width) - codeText.image.width/2)/100
         let uvX = (Math.floor(Math.floor(i/3)%codeText.image.width) - codeText.image.width/2)/100
-        newPosArray[i + 0] = originalPosArray[i + 0]*t + Math.sqrt(uvX*uvX + uvY*uvY)*Math.sin(time + uvY*3)*(1-t);
-        newPosArray[i + 1] = originalPosArray[i + 1];
-        newPosArray[i + 2] = originalPosArray[i + 2]*t + Math.sqrt(uvX*uvX + uvY*uvY)*Math.cos(time + uvY)*(1-t);
+        let uvR = Math.sqrt(uvX*uvX + uvY*uvY)
+        let rotationAxis = new THREE.Vector3(0, uvY, uvX).normalize();
+        let delta = new THREE.Vector3(uvX, 0, uvY).normalize().multiplyScalar(1/uvR);
+
+        currPositionAbsolute.add(delta.applyAxisAngle(rotationAxis, time/10));
+
+        newPosArray[i + 0] = originalPosArray[i + 0]*t + currPositionAbsolute.x*(1-t);
+        newPosArray[i + 1] = originalPosArray[i + 1]*t + currPositionAbsolute.y*(1-t);
+        newPosArray[i + 2] = originalPosArray[i + 2]*t + currPositionAbsolute.z*(1-t);
     }
 //     for(let i=0; i<pointsPos.length; i+=3) {
 //             let uvY = Math.floor(Math.floor(i/3)/codeText.image.width)
