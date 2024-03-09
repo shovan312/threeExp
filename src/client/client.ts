@@ -8,7 +8,7 @@ import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise'
 import {SVGLoader, SVGResult} from 'three/examples/jsm/loaders/SVGLoader';
 import { Spiro } from './helpers/spiro/spiro';
 import {clockCoeff} from './helpers/spiro/coefficients'
-import {getCube, getPointMesh} from './helpers/general/points'
+import {getCube, getPointMesh, getGeometryPoints} from './helpers/general/points'
 import {rearrangeArr, wave, burn, morph} from './helpers/general/transformations'
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { scene, clock, stats, camera, renderer, orbitControls, textureLoader,lights,makeHelperObjects, loadTextures,
@@ -103,21 +103,19 @@ for(let i=0; i<80; i++) {
     }
 }
 finalPosArray.sort(() => Math.random() - 0.5)
-//
-// let pathVector:any[] = []
-// for(let i=0; i<codeText.image.height; i++) {
-//     let pathVectorRow = []
-//     for(let j=0; j<codeText.image.width; j++) {
-//         pathVectorRow.push(new THREE.CatmullRomCurve3([
-//             new THREE.Vector3( 0, 0, 0 ),
-//             new THREE.Vector3( 1, 1, 0 ),
-//             new THREE.Vector3( 2, 0, 0 ),
-//             new THREE.Vector3( 1, -1, 0 )
-//         ]).getPoints(10))
-//     }
-//     pathVector.push(pathVectorRow)
-// }
-// console.log(pathVector[0][0][0])
+
+//////////
+let catObj:any = await loadObj('./obj/Cat.obj')
+let catObjPosArr = getGeometryPoints(catObj.children[0].geometry)
+for(let i=0; i<catObjPosArr.length; i++) {
+    let currPos = new THREE.Vector3(catObjPosArr[i + 0],catObjPosArr[i + 1],catObjPosArr[i + 2])
+    currPos.multiplyScalar(0.3)
+    currPos.applyAxisAngle(new THREE.Vector3(1,0,0), -Math.PI/2)
+
+    catObjPosArr[i+0] = currPos.x;
+    catObjPosArr[i+1] = currPos.y;
+    catObjPosArr[i+2] = currPos.z;
+}
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
@@ -151,9 +149,13 @@ function animate() {
 
         currPositionAbsolute.add(delta.applyAxisAngle(rotationAxis, time/10));
 
-        newPosArray[i + 0] = originalPosArray[i + 0]*t + currPositionAbsolute.x*(1-t);
-        newPosArray[i + 1] = originalPosArray[i + 1]*t + currPositionAbsolute.y*(1-t);
-        newPosArray[i + 2] = originalPosArray[i + 2]*t + currPositionAbsolute.z*(1-t);
+//         newPosArray[i + 0] = originalPosArray[i + 0]*t + currPositionAbsolute.x*(1-t);
+//         newPosArray[i + 1] = originalPosArray[i + 1]*t + currPositionAbsolute.y*(1-t);
+//         newPosArray[i + 2] = originalPosArray[i + 2]*t + currPositionAbsolute.z*(1-t);
+
+        newPosArray[i + 0] = originalPosArray[i + 0]*t + catObjPosArr[(i + 0 )% catObjPosArr.length]*(1-t)
+        newPosArray[i + 1] = originalPosArray[i + 1]*t + catObjPosArr[(i + 1 )% catObjPosArr.length]*(1-t)
+        newPosArray[i + 2] = originalPosArray[i + 2]*t + catObjPosArr[(i + 2 )% catObjPosArr.length]*(1-t)
     }
 //     for(let i=0; i<pointsPos.length; i+=3) {
 //             let uvY = Math.floor(Math.floor(i/3)/codeText.image.width)
@@ -171,7 +173,7 @@ function animate() {
 //             newPosArray[i + 1] = originalPosArray[i + 1] + curvePos.y
 //             newPosArray[i + 2] = originalPosArray[i + 2] + curvePos.z
 //         }
-    pointsMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(newPosArray, 3))
+    pointsMesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(burn(newPosArray, time), 3))
 
     const pointsCol = pointsMesh.geometry.getAttribute('color').array
     let newColArray = new Float32Array(pointsCol.length)
@@ -224,8 +226,8 @@ function updatePixelData(array:Uint8Array, time:number, dimensions:THREE.Vector2
     for(let i=0; i<pixelMatrix.length; i++) {
         for(let j=0; j<pixelMatrix[0].length; j++) {
             let currColor = pixelMatrix[i][j];
-            let grayFloat = 0.299*currColor.x + 0.587*currColor.y + 0.114*currColor.z;
-            currColor = new THREE.Vector3(grayFloat, grayFloat, grayFloat)
+//             let grayFloat = 0.299*currColor.x + 0.587*currColor.y + 0.114*currColor.z;
+//             currColor = new THREE.Vector3(grayFloat, grayFloat, grayFloat)
             let colorError = new THREE.Vector3();
             let newColor = new THREE.Vector3(
                 currColor.x > 255/2 ? 255 : 0,

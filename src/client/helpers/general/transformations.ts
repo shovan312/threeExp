@@ -112,7 +112,7 @@ export function rearrangeArr(inp:Float32Array):Float32Array {
             inp[i], inp[i+1], inp[i+2]
         ));
     }
-    inp2Vec.sort(byZ)
+    inp2Vec.sort(byY)
 //     inp2Vec.sort(byR)
     let out:Float32Array = new Float32Array(inp.length)
     for(let i=0; i<inp2Vec.length; i++) {
