@@ -1,7 +1,8 @@
 import * as THREE from "three";
 
-export function wave(arr:Float32Array, A:number, k:number, w:number, time:number) {
-    let ret = new Float32Array(arr.length);
+
+export function wave(arr:number[], A:number, k:number, w:number, time:number):number[] {
+    let ret = [];
     for(let i=0; i<arr.length; i+=3) {
         const ind = Math.floor(i/3)
         let x = arr[3*ind + 0]
@@ -10,9 +11,9 @@ export function wave(arr:Float32Array, A:number, k:number, w:number, time:number
         let posVec = new THREE.Vector3(x,y,z)
         posVec = displace(posVec, A, k, w, time)
 
-        ret[3*ind + 0] = posVec.x
-        ret[3*ind + 1] = posVec.y
-        ret[3*ind + 2] = posVec.z
+        ret.push(posVec.x)
+        ret.push(posVec.y)
+        ret.push(posVec.z)
     }
     return ret;
 }
@@ -45,9 +46,9 @@ function displace(vec:THREE.Vector3, A:number, k:number, w:number, time:number):
     return vec;
 }
 
-export function burn(arr:Float32Array, time:number) {
+export function burn(arr:number[], time:number):number[] {
     const len = arr.length/3
-    const ret = new Float32Array(arr.length)
+    const ret:number[] = []
     const winLen = Math.floor(len/2)
     const winStart = time*70000 % (len)
     const winEnd =( winLen + winStart) % (len)
@@ -61,29 +62,16 @@ export function burn(arr:Float32Array, time:number) {
             isValid = (ind > 0 && ind < winEnd) || (ind > winStart && ind < len)
         }
         if ( isValid) {
-            ret[i + 0] = arr[i + 0];
-            ret[i + 1] = arr[i + 1];
-            ret[i + 2] = arr[i + 2];
+            ret.push(arr[i + 0]);
+            ret.push(arr[i + 1]);
+            ret.push(arr[i + 2]);
         }
     }
     return ret;
 }
 
-export function morph(from:Float32Array, to:Float32Array, time:number): Float32Array {
-    const maxLength = Math.max(from.length, to.length);
-    // const t = THREE.MathUtils.clamp(Math.sin(time), 0, 1);
-    const t = time - Math.floor(time);
-    const ret = new Float32Array(maxLength);
 
-    for(let i=0; i<maxLength; i+=3) {
-        ret[i] = from[i%from.length] + t*(to[i%to.length] - from[i%from.length]);
-        ret[i+1] = from[i%from.length+1] + t*(to[i%to.length+1] - from[i%from.length+1]);
-        ret[i+2] = from[i%from.length+2] + t*(to[i%to.length+2] - from[i%from.length+2]);
-    }
-    return ret;
-}
-
-export function morphArr(from:number[], to:number[], time:number): number[] {
+export function morph(from:number[], to:number[], time:number): number[] {
     const maxLength = Math.max(from.length, to.length);
     // const t = THREE.MathUtils.clamp(Math.sin(time), 0, 1);
     const t = time - Math.floor(time);
@@ -97,44 +85,43 @@ export function morphArr(from:number[], to:number[], time:number): number[] {
     return ret;
 }
 
-export function rearrangeArr(inp:Float32Array):Float32Array {
+export function rearrangeArr(inp:number[], fn: (a: THREE.Vector3, b: THREE.Vector3) => number ):number[] {
     let inp2Vec:Array<THREE.Vector3> = [];
     for(let i=0; i<inp.length; i+=3) {
         inp2Vec.push(new THREE.Vector3(
             inp[i], inp[i+1], inp[i+2]
         ));
     }
-    inp2Vec.sort(byY)
-//     inp2Vec.sort(byR)
-    let out:Float32Array = new Float32Array(inp.length)
+    inp2Vec.sort(fn)
+    let out:number[] = []
     for(let i=0; i<inp2Vec.length; i++) {
-        out[3*i + 0] = inp2Vec[i].x;
-        out[3*i + 1] = inp2Vec[i].y;
-        out[3*i + 2] = inp2Vec[i].z;
+        out.push(inp2Vec[i].x);
+        out.push(inp2Vec[i].y);
+        out.push(inp2Vec[i].z);
     }
 
     return out;
 }
 
-function byX(a:THREE.Vector3, b:THREE.Vector3):number {
+export function byX(a:THREE.Vector3, b:THREE.Vector3):number {
     if(a.x < b.x) return -1;
     else if(a.x > b.x) return 1;
     return 0;
 }
 
-function byY(a:THREE.Vector3, b:THREE.Vector3):number {
+export function byY(a:THREE.Vector3, b:THREE.Vector3):number {
     if(a.y < b.y) return -1;
     else if(a.y > b.y) return 1;
     return 0;
 }
 
-function byZ(a:THREE.Vector3, b:THREE.Vector3):number {
+export function byZ(a:THREE.Vector3, b:THREE.Vector3):number {
     if(a.z < b.z) return -1;
     else if(a.z > b.z) return 1;
     return 0;
 }
 
-function byR(a:THREE.Vector3, b:THREE.Vector3):number {
+export function byR(a:THREE.Vector3, b:THREE.Vector3):number {
     let r1:number = a.length()
     let r2:number = b.length()
     let delta:number = r2-r1
@@ -154,4 +141,8 @@ function byR(a:THREE.Vector3, b:THREE.Vector3):number {
     else if(phi1 > phi2) return 1;
 
     return 0;
+}
+
+export function byRandom(a:THREE.Vector3, b:THREE.Vector3):number {
+    if (Math.random() - 0.5 < 0) return -1; else return 1;
 }
