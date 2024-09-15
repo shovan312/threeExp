@@ -10,7 +10,7 @@ export function loadGltf( path:string){
 }
 
 const objLoader:OBJLoader = new OBJLoader();
-export function loadObj( path:string){
+export function loadObj( path:string):Promise<THREE.Group>{
     return new Promise(function(resolve, reject){
         var progress=undefined;
         objLoader.load( path, resolve, progress, reject);

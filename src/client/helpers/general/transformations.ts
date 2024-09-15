@@ -70,39 +70,31 @@ export function burn(arr:Float32Array, time:number) {
 }
 
 export function morph(from:Float32Array, to:Float32Array, time:number): Float32Array {
-    // if(from.length == to.length) {
-    //     const ret = new Float32Array(from.length);
-    //     for(let i = 0; i < from.length; i+=3) {
-    //         ret[i + 0] = from[i + 0] + t*(to[i + 0] - from[i + 0])
-    //         ret[i + 1] = from[i + 1] + t*(to[i + 1] - from[i + 1])
-    //         ret[i + 2] = from[i + 2] + t*(to[i + 2] - from[i + 2])
-    //     }
-    //     return ret
-    // }
-    // else if(from.length > to.length) {
-    //     const ret = new Float32Array(from.length);
-    //     for(let i = 0; i < from.length; i+=3) {
-    //         const ind = Math.floor(i/3)
-    //         const newInd = ind*100003%(to.length/3)
-    //         ret[3*ind + 0] = from[3*ind + 0] + t*(to[3*newInd + 0] - from[3*ind + 0])
-    //         ret[3*ind + 1] = from[3*ind + 1] + t*(to[3*newInd + 1] - from[3*ind + 1])
-    //         ret[3*ind + 2] = from[3*ind + 2] + t*(to[3*newInd + 2] - from[3*ind + 2])
-    //     }
-    //     return ret
-    // }
-    // else {
-    const ret = new Float32Array(to.length);
-    for(let i = 0; i < to.length; i+=3) {
-        const ind = Math.floor(i/3)
-        const newInd = ind*100003%(to.length/3)
-        const t = THREE.MathUtils.clamp(1.01*Math.sin(time + ind/3*(to.length/3)), 0, 1)
-        ret[3*ind + 0] = from[3*newInd + 0] + t*(to[3*ind + 0] - from[3*newInd + 0])
-        ret[3*ind + 1] = from[3*newInd + 1] + t*(to[3*ind + 1] - from[3*newInd + 1])
-        ret[3*ind + 2] = from[3*newInd + 2] + t*(to[3*ind + 2] - from[3*newInd + 2])
-    }
-    return ret
-    // }
+    const maxLength = Math.max(from.length, to.length);
+    // const t = THREE.MathUtils.clamp(Math.sin(time), 0, 1);
+    const t = time - Math.floor(time);
+    const ret = new Float32Array(maxLength);
 
+    for(let i=0; i<maxLength; i+=3) {
+        ret[i] = from[i%from.length] + t*(to[i%to.length] - from[i%from.length]);
+        ret[i+1] = from[i%from.length+1] + t*(to[i%to.length+1] - from[i%from.length+1]);
+        ret[i+2] = from[i%from.length+2] + t*(to[i%to.length+2] - from[i%from.length+2]);
+    }
+    return ret;
+}
+
+export function morphArr(from:number[], to:number[], time:number): number[] {
+    const maxLength = Math.max(from.length, to.length);
+    // const t = THREE.MathUtils.clamp(Math.sin(time), 0, 1);
+    const t = time - Math.floor(time);
+    const ret = [];
+
+    for(let i=0; i<maxLength; i+=3) {
+        ret.push(from[i%from.length] + t*(to[i%to.length] - from[i%from.length]));
+        ret.push(from[i%from.length+1] + t*(to[i%to.length+1] - from[i%from.length+1]));
+        ret.push(from[i%from.length+2] + t*(to[i%to.length+2] - from[i%from.length+2]));
+    }
+    return ret;
 }
 
 export function rearrangeArr(inp:Float32Array):Float32Array {
