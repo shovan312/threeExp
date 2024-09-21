@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "webpack serve --config ./src/client/webpack.dev.js",
-    "build": "webpack --config ./src/client/webpack.prod.js",
+    "build": "webpack --config ./src/client/webpack.prod.js && shx cp -r dist/client/obj ./public/obj",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -16,6 +16,7 @@
     "dat.gui": "^0.7.9",
     "html-webpack-plugin": "^5.6.0",
     "mini-css-extract-plugin": "^2.9.1",
+    "shx": "^0.3.4",
     "three": "^0.156.1",
     "ts-loader": "^9.5.1",
     "typescript": "^5.2.2",
