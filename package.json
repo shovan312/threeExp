@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "webpack serve --config ./src/client/webpack.dev.js",
-    "build": "webpack serve --config ./src/client/webpack.dev.js",
+    "build": "webpack --config ./src/client/webpack.prod.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -14,6 +14,8 @@
     "@types/dat.gui": "^0.7.13",
     "@types/three": "^0.156.0",
     "dat.gui": "^0.7.9",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.9.1",
     "three": "^0.156.1",
     "ts-loader": "^9.4.4",
     "typescript": "^5.2.2",
