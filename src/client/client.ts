@@ -110,7 +110,7 @@ const debug = document.getElementById('debug1') as HTMLDivElement
 const clock = new THREE.Clock()
 function animate() {
     requestAnimationFrame(animate)
-
+    const time = clock.getElapsedTime()
 
     scene.rotateY(0.001)
     // scene.rotateX(0.001)
