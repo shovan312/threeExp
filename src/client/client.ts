@@ -213,9 +213,9 @@ function animate() {
     //     // ), 
     //     time
     // )
-    // const newArray:Float32Array = wave(burn(posArray4, time), 0.7, 0.5, 5)
-    // const newArray:Float32Array = wave(posArray, 0.7, 0.5, 5)
-    const newArray:Float32Array = posArray;
+    // const newArray:Float32Array = wave(burn(posArray, time), 0.7, 0.5, 5)
+    const newArray:Float32Array = wave(posArray, 0.7, 0.5, 5)
+    // const newArray:Float32Array = posArray;
     // const newArray:Float32Array = burn(posArray4, time)
     let newColArray = [];
     for(let i=0; i<colors.length; i+=3) {
