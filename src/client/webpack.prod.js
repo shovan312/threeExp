@@ -18,6 +18,11 @@ module.exports = {
           loader: 'babel-loader',
         },
       },
+      {
+        test: /\.ts$/,
+        use: 'ts-loader',
+        exclude: /node_modules/,
+      },
     ],
   },
   plugins: [
