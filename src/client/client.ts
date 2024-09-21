@@ -146,6 +146,7 @@ const debug = document.getElementById('debug1') as HTMLDivElement
 const clock = new THREE.Clock()
 function animate() {
     requestAnimationFrame(animate)
+    const time = clock.getElapsedTime()
 
     if (time < 9000) {
         spheres.forEach(sphere =>sphere.visible = false)
