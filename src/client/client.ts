@@ -54,9 +54,9 @@ new OrbitControls(camera, renderer.domElement);
 
 const gridHelper = new THREE.GridHelper(12, 12);
 gridHelper.rotateX(Math.PI/2)
-scene.add(gridHelper);
+// scene.add(gridHelper);
 const axesHelper = new THREE.AxesHelper(4);
-scene.add(axesHelper);
+// scene.add(axesHelper);
 
 let axes:Array<AxesHelper> = []
 for(let i=0; i<3; i++) {
@@ -71,7 +71,7 @@ for(let i=0; i<3; i++) {
             )
             // axis.position.x = 2*(9*i + 3*j + k - 13)
             axes.push(axis)
-            scene.add(axis)
+            // scene.add(axis)
         }
     }
 }
@@ -208,19 +208,19 @@ sphere.position.set(2,2,3)
 sphere.castShadow = true;
 // scene.add(sphere);
 
-// const spiroCoeff:coefficients = [
-//     {n:3, an:new complex(8,0)},
-//     {n:-13, an:new complex(8/2,0)},
-//     {n:11, an:new complex(0, 8/3)},
-// ]
-
 const spiroCoeff:coefficients = [
-    {n:-7, an:new complex(-0.0827113100467,0)},
-    {n:-3, an:new complex(-0.4503171322,0)},
-    {n:1, an:new complex(-4.0528541922,0)},
-    {n:5, an:new complex(-0.16211416769,0)},
-    {n:9, an:new complex(-0.05003523694,0)},
+    {n:3, an:new complex(8,0)},
+    {n:-13, an:new complex(8/2,0)},
+    {n:11, an:new complex(0, 8/3)},
 ]
+
+// const spiroCoeff:coefficients = [
+//     {n:-7, an:new complex(-0.0827113100467,0)},
+//     {n:-3, an:new complex(-0.4503171322,0)},
+//     {n:1, an:new complex(-4.0528541922,0)},
+//     {n:5, an:new complex(-0.16211416769,0)},
+//     {n:9, an:new complex(-0.05003523694,0)},
+// ]
 
 const spiroPoints:Array<THREE.Vector3> = getSpiroPoints(spiroCoeff);
 const spiroLine = new Line(spiroPoints, glassRainbowText);
