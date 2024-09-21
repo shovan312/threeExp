@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "webpack serve --config ./src/client/webpack.dev.js",
-    "build": "webpack --config ./src/client/webpack.prod.js && shx cp `ls dist/client | grep -v 'index.html' | perl -ne 'print \"dist/client/$_\"'` ./public/",
+    "build": "webpack --config ./src/client/webpack.prod.js && shx cp -r `ls dist/client | grep -v 'index.html' | perl -ne 'print \"dist/client/$_\"'` ./public/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
