@@ -122,6 +122,7 @@ svgLoader.load(
 		const paths = data.paths;
 		const group = new THREE.Group();
 
+        let allPoints:THREE.Vector2[]=[]
 		for ( let i = 0; i < paths.length; i ++ ) {
 			const path = paths[ i ];
 
@@ -136,14 +137,14 @@ svgLoader.load(
                 allPoints.push(...pointsArr)
             }
 
-            allPoints = allPoints.map(point => new THREE.Vector3(point.x/3, point.y/3, 0))
-            const line = new Line(allPoints, glassRainbowText, new THREE.Color(0xff0000)); 
-            const com=getCenterOfMass(allPoints);
+            let allPointsVec3:THREE.Vector3[] = allPoints.map(point => new THREE.Vector3(point.x/3, point.y/3, 0))
+            const line = new Line(allPointsVec3, glassRainbowText); 
+            const com=getCenterOfMass(allPointsVec3);
             line.curve.position.set(-com.x, -com.y, -com.z)
 
-            svgCoeffs = getCoeffs(allPoints, 8)
+            svgCoeffs = getCoeffs(allPointsVec3, 8)
             const svgSpiro = getSpiroPoints(svgCoeffs)
-            newSvgLine = new Line(svgSpiro, glassRainbowText, new THREE.Color(0x0000ff))
+            newSvgLine = new Line(svgSpiro, glassRainbowText)
             
             scene.add(newSvgLine.curve)
             // scene.add(line.curve)
@@ -448,7 +449,7 @@ let coeffs = getCoeffs(spiroPoints, 18)
 coeffs.forEach(x=>console.log(x.n, complexStr(x.an)))
 const newPoints = getSpiroPoints(coeffs)
 
-const newCurve = new Line(newPoints, glassRainbowText, new THREE.Color(0xff0000)); 
+const newCurve = new Line(newPoints, glassRainbowText); 
 // scene.add(newCurve.curve)
 
 function complexStr(z:complex) {
