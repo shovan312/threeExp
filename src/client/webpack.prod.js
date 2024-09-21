@@ -6,7 +6,7 @@ module.exports = {
   entry: './src/client/client.ts', // Your entry file
   output: {
     filename: 'bundle.[contenthash].js', // Output bundle file with hash
-    path: path.resolve(__dirname, 'dist'), // Output directory
+    path: path.resolve(__dirname, 'public'), // Output directory
     clean: true, // Clean the output directory before each build
   },
   module: {
