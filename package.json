@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "webpack serve --config ./src/client/webpack.dev.js",
-    "build": "webpack --config ./src/client/webpack.prod.js",
+    "build": "webpack --config ./src/client/webpack.prod.js && shx cp `ls dist/client | grep -v 'index.html' | perl -ne 'print \"dist/client/$_\"'` ./public/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -16,6 +16,7 @@
     "dat.gui": "^0.7.9",
     "html-webpack-plugin": "^5.6.0",
     "mini-css-extract-plugin": "^2.9.1",
+    "shx": "^0.3.4",
     "three": "^0.156.1",
     "three-noise": "^1.1.2",
     "three.meshline": "^1.4.0",

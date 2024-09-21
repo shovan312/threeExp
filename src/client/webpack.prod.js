@@ -9,6 +9,9 @@ module.exports = {
     path: path.resolve('./public'), // Output directory
     clean: true, // Clean the output directory before each build
   },
+  resolve: {
+    extensions: ['.ts', '.js'], // Automatically resolve these extensions
+  },
   module: {
     rules: [
       {
