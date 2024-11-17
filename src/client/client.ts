@@ -115,9 +115,9 @@ const clock = new THREE.Clock()
 
 function animate() {
     requestAnimationFrame(animate)
-    const time = clock.getElapsedTime()
+    const time = clock.getElapsedTime()*100
 
-    // scene.rotateY(0.0001)
+    scene.rotateY(0.0001)
     // scene.rotateX(0.001)
 
     spheresData[0].thetaLength = time/2000
@@ -156,7 +156,7 @@ function animate() {
 }
 
 function render() {
-    camera.updateProjectionMatrix()
+    // camera.updateProjectionMatrix()
     renderer.render(scene, camera)
     
 }
