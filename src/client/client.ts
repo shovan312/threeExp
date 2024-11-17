@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { GUI } from 'dat.gui'
+import {VRButton} from 'three/examples/jsm/webxr/VRButton'
 
 type sphereData = {
     radius: number,
@@ -67,6 +68,8 @@ camera.position.set(5,0,5)
 const renderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
+document.body.appendChild( VRButton.createButton( renderer ) );
+renderer.xr.enabled = true;
 
 new OrbitControls(camera, renderer.domElement)
 
@@ -147,7 +150,7 @@ const debug = document.getElementById('debug1') as HTMLDivElement
 const clock = new THREE.Clock()
 function animate() {
     const time = clock.getElapsedTime()*1000
-    requestAnimationFrame(animate)
+    // requestAnimationFrame(animate)
 
     if (time < 9000) {
         spheres.forEach(sphere =>sphere.visible = false)
@@ -241,8 +244,8 @@ function animate() {
 function render() {
     renderer.render(scene, camera)
 }
-
-animate()
+renderer.setAnimationLoop(animate)
+// animate()
 
 ///////////
 
