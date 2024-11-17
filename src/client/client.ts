@@ -38,7 +38,7 @@ const camera = new THREE.PerspectiveCamera(
 // const camera = new THREE.OrthographicCamera(
 //     -10,10,10,-10,0.001,100
 // )
-camera.position.set(5,0,5)
+camera.position.set(5,0,15)
 
 const renderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth,window.innerHeight)
@@ -108,24 +108,14 @@ function regenerateSphereGeometry(i:number) {
 }
 const debug = document.getElementById('debug1') as HTMLDivElement
 const clock = new THREE.Clock()
+
 function animate() {
     requestAnimationFrame(animate)
     const time = clock.getElapsedTime()
 
     scene.rotateY(0.001)
     // scene.rotateX(0.001)
-    
-    // let newPosition:THREE.Vector= path.getPoint((time % 2000)/2000)
-    // let pos:THREE.Vector3 = new THREE.Vector3(
-    //     newPosition.getComponent(0),
-    //     newPosition.getComponent(1),
-    //     newPosition.getComponent(2)
-    // );
-    // sphere.position.copy(pos)
-    // sphere.position.x = 4+Math.sin(time/1000);
-    // sphere.position.z = 4+Math.sin(time/1000);
-    // spheresData[0].heightSegments = Math.floor(3 + Math.abs(30*Math.sin(time/3000)))
-    // spheresData[2].widthSegments = Math.floor(3 + Math.abs(30*Math.cos(time/3000)))
+
     spheresData[0].thetaLength = time/2000
     spheresData[2].phiLength = time/2000
     regenerateSphereGeometry(0)
