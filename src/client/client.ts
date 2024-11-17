@@ -113,6 +113,9 @@ function regenerateSphereGeometry(i:number) {
 const debug = document.getElementById('debug1') as HTMLDivElement
 const clock = new THREE.Clock()
 
+renderer.xr.getCamera().position.copy( camera.position);
+
+// renderer.xr.getCamera().lookAt( camera.target );
 function animate() {
     requestAnimationFrame(animate)
     const time = clock.getElapsedTime()*100
