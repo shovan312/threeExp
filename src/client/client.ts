@@ -4,6 +4,7 @@ import { Water } from 'three/examples/jsm/objects/Water2.js';
 import {AxesHelper, ColorRepresentation, CubeTexture, GridHelper, LineBasicMaterial} from "three";
 import {Hilbert} from "./hilbert";
 import {ImprovedNoise} from 'three/examples/jsm/math/ImprovedNoise'
+import {VRButton } from 'three/examples/jsm/webxr/VRButton';
 
 
 let material:LineBasicMaterial,sideLen=4, curves:Array<THREE.Line>=[],
@@ -16,6 +17,11 @@ const perlin = new ImprovedNoise();
 /////////////////////////
 const renderer = new THREE.WebGLRenderer({antialias: true});
 renderer.setSize(window.innerWidth, window.innerHeight);
+
+renderer.xr.enabled = true
+document.body.appendChild(VRButton.createButton(renderer))
+
+
 document.body.appendChild(renderer.domElement);
 renderer.setClearColor(0x515151);
 
@@ -196,6 +202,9 @@ h4.texture = cloudText;
 let h5 = new Hilbert(basicSeed, 2);
 h5.update(basicSeed, 4)
 h5.texture = cloudText;
+
+
+camera.position.y=2
 
 function animate() {
     let time:number = clock.getElapsedTime()*1;
